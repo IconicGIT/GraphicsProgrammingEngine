@@ -345,6 +345,22 @@ void Gui(App* app)
 void Update(App* app)
 {
     // You can handle app->input keyboard/mouse here
+    ErrorGuardOGL error("Update()", __FILE__, __LINE__);
+
+    for (u64 i = 0; i < app->programs.size(); i++)
+    {
+        Program& program = app->programs[i];
+        u64 currentTimestamp = GetFileLastWriteTimestamp(program.filepath.c_str());
+        if (currentTimestamp > program.lastWriteTimestamp)
+        {
+            glDeleteProgram(program.handle);
+            String programSource = ReadTextFile(program.filepath.c_str());
+            const char* programName = program.programName.c_str();
+            program.handle = CreateProgramFromSource(programSource, programName);
+            program.lastWriteTimestamp = currentTimestamp;
+        }
+    }
+
 }
 
 void Render(App* app)
@@ -353,6 +369,8 @@ void Render(App* app)
     {
         case Mode_TexturedQuad:
             {
+                ErrorGuardOGL error("Render() [Mode_TexturedQuad]", __FILE__, __LINE__);
+
                 // TODO: Draw your textured quad here!
                 // - clear the framebuffer
                 // - set the viewport
@@ -395,10 +413,6 @@ void Render(App* app)
 
                 glBindVertexArray(0);
                 glUseProgram(0);
-
-
-
-                
             }
             break;
 
