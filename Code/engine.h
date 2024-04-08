@@ -178,25 +178,22 @@ void Update(App* app);
 
 void Render(App* app);
 
-class ErrorGuardOGL
-{
+class ErrorGuardOGL {
 public:
-    ErrorGuardOGL(const char *message) : msg(message)
-    {
-        CheckGLError("BEGIN", msg);
+    ErrorGuardOGL(const char* message, const char* file, int line) : msg(message), file(file), line(line) {
+        CheckGLError("BEGIN");
     }
 
-    ~ErrorGuardOGL()
-    {
-        CheckGLError("END", msg);
-
+    ~ErrorGuardOGL() {
+        CheckGLError("END");
     }
 
-    static void CheckGLError(const char* around, const char* message);
+    void CheckGLError(const char* around);
 
     const char* msg;
-
+    const char* file;
+    int line;
 };
 
-
+void OnGlError(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const char* message, const void* userParam);
 

@@ -9,6 +9,7 @@
 #include <imgui.h>
 #include <stb_image.h>
 #include <stb_image_write.h>
+#include <iostream>
 
 GLuint CreateProgramFromSource(String programSource, const char* shaderName)
 {
@@ -142,7 +143,7 @@ GLuint CreateTexture2DFromImage(Image image)
     glBindTexture(GL_TEXTURE_2D, texHandle);
     glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, image.size.x, image.size.y, 0, dataFormat, dataType, image.pixels);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); //error on glEnum, idk why
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -158,7 +159,9 @@ u32 LoadTexture2D(App* app, const char* filepath)
         if (app->textures[texIdx].filepath == filepath)
             return texIdx;
 
+
     Image image = LoadImage(filepath);
+    
 
     if (image.pixels)
     {
@@ -180,24 +183,93 @@ u32 LoadTexture2D(App* app, const char* filepath)
 
 
 
-void ErrorGuardOGL::CheckGLError(const char* around, const char* message)
-{
+void ErrorGuardOGL::CheckGLError(const char* around) {
     GLenum error;
-    do
-    {
-        error = glGetError();
-        
-        if (error != GL_NO_ERROR)
-        {
-            printf("OpenGL Error: %d\n", error);
-            //hacer tocho
-
+    while ((error = glGetError()) != GL_NO_ERROR) {
+        std::cerr << "OpenGL error at " << file << ":" << line << " (" << around << ") - ";
+        switch (error) {
+        case GL_INVALID_ENUM:
+            std::cerr << "GL_INVALID_ENUM: An unacceptable value is specified for an enumerated argument." << std::endl;
+            break;
+        case GL_INVALID_VALUE:
+            std::cerr << "GL_INVALID_VALUE: A numeric argument is out of range." << std::endl;
+            break;
+        case GL_INVALID_OPERATION:
+            std::cerr << "GL_INVALID_OPERATION: The specified operation is not allowed in the current state." << std::endl;
+            break;
+        case GL_INVALID_FRAMEBUFFER_OPERATION:
+            std::cerr << "GL_INVALID_FRAMEBUFFER_OPERATION: The framebuffer object is not complete." << std::endl;
+            break;
+        case GL_OUT_OF_MEMORY:
+            std::cerr << "GL_OUT_OF_MEMORY: There is not enough memory left to execute the command." << std::endl;
+            break;
+        default:
+            std::cerr << "Unknown error: " << error << std::endl;
+            break;
         }
-    } while (error != GL_NO_ERROR);
+        if (msg)
+            std::cerr << "Message: " << msg << std::endl;
+    }
+}
+
+
+void OnGlError(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const char* message, const void* userParam) {
+    if (severity == GL_DEBUG_SEVERITY_NOTIFICATION)
+        return;
+    ELOG("OpenGL debug message: %s", message);
+    switch (source) {
+    case GL_DEBUG_SOURCE_API:
+        ELOG(" - source: GL_DEBUG_SOURCE_API"); break;
+    case GL_DEBUG_SOURCE_WINDOW_SYSTEM:
+        ELOG(" - source: GL_DEBUG_SOURCE_WINDOW_SYSTEM"); break;
+    case GL_DEBUG_SOURCE_SHADER_COMPILER:
+        ELOG(" - source: GL_DEBUG_SOURCE_SHADER_COMPILER"); break;
+    case GL_DEBUG_SOURCE_THIRD_PARTY:
+        ELOG(" - source: GL_DEBUG_SOURCE_THIRD_PARTY"); break;
+    case GL_DEBUG_SOURCE_APPLICATION:
+        ELOG(" - source: GL_DEBUG_SOURCE_APPLICATION"); break;
+    case GL_DEBUG_SOURCE_OTHER:
+        ELOG(" - source: GL_DEBUG_SOURCE_OTHER"); break;
+    }
+    switch (type) {
+    case GL_DEBUG_TYPE_ERROR:
+        ELOG(" - type: GL_DEBUG_TYPE_ERROR"); break;
+    case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
+        ELOG(" - type: GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR"); break;
+    case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
+        ELOG(" - type: GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR"); break;
+    case GL_DEBUG_TYPE_PORTABILITY:
+        ELOG(" - type: GL_DEBUG_TYPE_PORTABILITY"); break;
+    case GL_DEBUG_TYPE_PERFORMANCE:
+        ELOG(" - type: GL_DEBUG_TYPE_PERFORMANCE"); break;
+    case GL_DEBUG_TYPE_MARKER:
+        ELOG(" - type: GL_DEBUG_TYPE_MARKER"); break;
+    case GL_DEBUG_TYPE_PUSH_GROUP:
+        ELOG(" - type: GL_DEBUG_TYPE_PUSH_GROUP"); break;
+    case GL_DEBUG_TYPE_POP_GROUP:
+        ELOG(" - type: GL_DEBUG_TYPE_POP_GROUP"); break;
+    case GL_DEBUG_TYPE_OTHER:
+        ELOG(" - type: GL_DEBUG_TYPE_OTHER"); break;
+    }
+    switch (severity) {
+    case GL_DEBUG_SEVERITY_HIGH:
+        ELOG(" - severity: GL_DEBUG_SEVERITY_HIGH"); break;
+    case GL_DEBUG_SEVERITY_MEDIUM:
+        ELOG(" - severity: GL_DEBUG_SEVERITY_MEDIUM"); break;
+    case GL_DEBUG_SEVERITY_LOW:
+        ELOG(" - severity: GL_DEBUG_SEVERITY_LOW"); break;
+    case GL_DEBUG_SEVERITY_NOTIFICATION:
+        ELOG(" - severity: GL_DEBUG_SEVERITY_NOTIFICATION"); break;
+    }
 }
 
 void Init(App* app)
 {
+    ErrorGuardOGL error("Init()", __FILE__, __LINE__);
+
+    if (GLVersion.major > 4 || (GLVersion.major == 4 && GLVersion.minor >= 3))
+        glDebugMessageCallback(OnGlError, app);
+
     // TODO: Initialize your resources here!
     // - vertex buffers
     // - element/index buffers
@@ -251,7 +323,7 @@ void Init(App* app)
     texturedGeometryProgram.vertexShaderLayout.attributes.push_back({ 0,3 });   //pos
     texturedGeometryProgram.vertexShaderLayout.attributes.push_back({ 2,2 });   //tex coor
     app->programUniformTexture = glGetUniformLocation(texturedGeometryProgram.handle, "uTexture");
-   
+ 
     // - textures
     app->diceTexIdx = LoadTexture2D(app, "dice.png");
     app->whiteTexIdx = LoadTexture2D(app, "color_white.png");
@@ -291,7 +363,7 @@ void Render(App* app)
                 // - bind the vao
                 // - glDrawElements() !!!
 
-                ErrorGuardOGL error("Mode_TexturedQuad: ");
+                
                 // - clear the framebuffer
                 glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
