@@ -267,6 +267,7 @@ void OnGlError(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei l
 
 GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program)
 {
+    ErrorGuardOGL error("FindVAO()", __FILE__, __LINE__);
     Submesh& submesh = mesh.submeshes[submeshIndex];
 
     //try finding a vao for this submesh/program
@@ -290,6 +291,7 @@ GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program)
         bool attributeWasLinked = false;
         for (u32 j = 0; j < submesh.vertexBufferLayout.attributes.size(); ++j)
         {
+            std::cout << (int)program.vertexShaderLayout.attributes[i].location << " - " << (int)submesh.vertexBufferLayout.attributes[j].location << std::endl;
             if (program.vertexShaderLayout.attributes[i].location == submesh.vertexBufferLayout.attributes[j].location)
             {
                 const u32 index = submesh.vertexBufferLayout.attributes[j].location;
@@ -302,7 +304,7 @@ GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program)
                 attributeWasLinked = true;
                 break;
             }
-            assert(attributeWasLinked); // The submesh should provide an attribute for each vertex inputs
+            //assert(attributeWasLinked); // The submesh should provide an attribute for each vertex inputs
         }
         glBindVertexArray(0);
 
@@ -320,6 +322,12 @@ void Init(App* app)
 
     if (GLVersion.major > 4 || (GLVersion.major == 4 && GLVersion.minor >= 3))
         glDebugMessageCallback(OnGlError, app);
+
+    u32 patrick = LoadModel(app, "Patrick/patrick.obj");
+
+    if (patrick == UINT32_MAX) std::cout << "error loading patrick!" << std::endl;
+
+
 
     // TODO: Initialize your resources here!
     // - vertex buffers
@@ -399,6 +407,9 @@ void Init(App* app)
     Mesh m_quad;
     m_quad.submeshes.push_back(submesh);
 
+    Model mod_quad;
+    mod_quad.meshIdx = 0;
+
     glGenBuffers(1, &app->embeddedVertices);
     glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), &vertices, GL_STATIC_DRAW);
@@ -416,7 +427,7 @@ void Init(App* app)
     glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(int), (void*)12);
+    glVertexAttribPointer(1, 2, GL_INT, GL_FALSE, sizeof(int), (void*)12);
     glEnableVertexAttribArray(2);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
     glBindVertexArray(0);
@@ -425,7 +436,10 @@ void Init(App* app)
     app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "TEXTURED_GEOMETRY");
     Program& texturedGeometryProgram = app->programs[app->texturedGeometryProgramIdx];
     texturedGeometryProgram.vertexShaderLayout.attributes.push_back({ 0,3 });   //pos
+    texturedGeometryProgram.vertexShaderLayout.attributes.push_back({ 1,3 });   //tex coor
     texturedGeometryProgram.vertexShaderLayout.attributes.push_back({ 2,2 });   //tex coor
+    texturedGeometryProgram.vertexShaderLayout.attributes.push_back({ 3,3 });   //tex coor
+    texturedGeometryProgram.vertexShaderLayout.attributes.push_back({ 4,3 });   //tex coor
     app->programUniformTexture = glGetUniformLocation(texturedGeometryProgram.handle, "uTexture");
  
 

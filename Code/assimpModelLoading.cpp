@@ -193,7 +193,7 @@ u32 LoadModel(App* app, const char* filename)
 
     // Create a list of materials
     u32 baseMeshMaterialIndex = (u32)app->materials.size();
-    for (unsigned int i = 0; i < scene->mNumMaterials; ++i)
+    for (unsigned int i = 0; i < scene->mNumMaterials - 1; ++i)
     {
         app->materials.push_back(Material{});
         Material& material = app->materials.back();
