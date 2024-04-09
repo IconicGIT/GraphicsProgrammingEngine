@@ -7,6 +7,8 @@
 #include "platform.h"
 #include <glad/glad.h>
 
+
+
 typedef glm::vec2  vec2;
 typedef glm::vec3  vec3;
 typedef glm::vec4  vec4;
@@ -30,7 +32,7 @@ struct Texture
 
 
 
-struct VertexShaderAtt
+struct VertexShaderAttribute
 {
     u8 location;
     u8 componentCount;
@@ -38,7 +40,7 @@ struct VertexShaderAtt
 
 struct VertexShaderLayout
 {
-    std::vector<VertexShaderAtt> attributes;
+    std::vector<VertexShaderAttribute> attributes;
 };
 
 struct Program
@@ -54,6 +56,7 @@ struct Program
 enum Mode
 {
     Mode_TexturedQuad,
+    Mode_TexturedMeshes,
     Mode_Count
 };
 
@@ -69,23 +72,23 @@ struct Vao
     GLuint programHandle;
 };
 
-struct VertexBufferAtt
+struct VertexBufferAttribute
 {
     u8 location;
-    u8 compCount;
+    u8 componentCount;
     u8 offset;
 };
 
-struct VertexBuffLayout
+struct VertexBufferLayout
 {
-    std::vector<VertexBufferAtt> attributes;
+    std::vector<VertexBufferAttribute> attributes;
     u8 stride;
 };
 
 
 struct Submesh
 {
-    VertexBuffLayout vertexBuffLayout;
+    VertexBufferLayout vertexBufferLayout;
     std::vector<float> vertices;
     std::vector<u32> indices;
     u32 vertexOffset;
@@ -129,11 +132,11 @@ struct App
 
     ivec2 displaySize;
 
-    std::vector<Texture>  textures;
-    std::vector<Program>  programs;
-    std::vector<Model> models;
-    std::vector<Material> materials;
-    std::vector<Mesh> meshes;
+    std::vector<Texture>    textures;
+    std::vector<Program>    programs;
+    std::vector<Model>      models;
+    std::vector<Material>   materials;
+    std::vector<Mesh>       meshes;
 
     // program indices
     u32 texturedGeometryProgramIdx;
@@ -197,3 +200,6 @@ public:
 
 void OnGlError(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const char* message, const void* userParam);
 
+u32 LoadTexture2D(App* app, const char* filepath);
+
+GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program);
