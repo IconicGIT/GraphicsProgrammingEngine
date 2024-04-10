@@ -157,7 +157,7 @@ struct App
     GLuint embeddedElements;
 
     // Location of the texture uniform in the textured quad shader
-    GLuint programUniformTexture;
+    GLuint programUniformTexture = 1004;
 
     // VAO object to link our screen filling quad with our textured quad shader
     GLuint vao;

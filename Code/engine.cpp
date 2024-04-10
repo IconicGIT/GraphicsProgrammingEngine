@@ -156,6 +156,7 @@ GLuint CreateTexture2DFromImage(Image image)
 
 u32 LoadTexture2D(App* app, const char* filepath)
 {
+    
     for (u32 texIdx = 0; texIdx < app->textures.size(); ++texIdx)
         if (app->textures[texIdx].filepath == filepath)
             return texIdx;
@@ -174,10 +175,13 @@ u32 LoadTexture2D(App* app, const char* filepath)
         app->textures.push_back(tex);
 
         FreeImage(image);
+
+        std::cout << "Loaded " + std::string(filepath) << std::endl;
         return texIdx;
     }
     else
     {
+        std::cout << "Failed loading " + std::string(filepath) << std::endl;
         return UINT32_MAX;
     }
 }
@@ -328,7 +332,7 @@ void Init(App* app)
     if (GLVersion.major > 4 || (GLVersion.major == 4 && GLVersion.minor >= 3))
         glDebugMessageCallback(OnGlError, app);
 
-    u32 patrick = LoadModel(app, "Patrick/patrick.obj");
+    u32 patrick = LoadModel(app, "Patrick/patrick_2.obj");
 
     if (patrick == UINT32_MAX) std::cout << "error loading patrick!" << std::endl;
 
@@ -495,7 +499,7 @@ void Init(App* app)
         std::cout << "Attribute " << i << ": Name = " << attributeName << ", Size = " << size << ", Type = " << type << ", Location = " << location << std::endl;
     }
 
-    //app->programUniformTexture = glGetUniformLocation(texturedGeometryProgram.handle, "uTexture");
+    app->programUniformTexture = glGetUniformLocation(texturedGeometryProgram.handle, "uTexture");
  
 
 
@@ -621,13 +625,18 @@ void Render(App* app)
                 u32 submeshMaterialldx = model.materialIdx[i] - 1;
                 Material& submeshMaterial = app->materials[submeshMaterialldx];
 
+                Texture* tex = &app->textures[submeshMaterial.albedoTextureIdx];
+
                 glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, app->textures[submeshMaterial.albedoTextureIdx].handle);
+                glBindTexture(GL_TEXTURE_2D, tex->handle);
                 glUniform1i(app->programUniformTexture, 0);
+                std::cout << "Using texture: " << std::string(tex->filepath) << std::endl;
 
                 Submesh& submesh = mesh.submeshes[i];
                 glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
             }
+
+            std::cout << "Next Render call --------------------------------------------------------------------" << std::endl;
 
         }
             break;
