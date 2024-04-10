@@ -325,6 +325,147 @@ GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program)
 
     return vaoHandle;
 }
+
+vec3 rotate(const vec3& vector, float degrees, const vec3& axis)
+{
+    // Convert degrees to radians
+    float radians = glm::radians(degrees);
+
+    // Create a rotation matrix
+    glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), radians, axis);
+
+    // Transform the vector using the rotation matrix
+    glm::vec4 rotatedVector = rotationMatrix * glm::vec4(vector, 1.0f);
+
+    // Return the rotated vector
+    return glm::vec3(rotatedVector);
+}
+
+void CalculateViewMatrix(vec3 Position, vec3 X, vec3 Y, vec3 Z, mat4x4 ViewMatrix, mat4x4& ViewMatrixInverse)
+{
+    ViewMatrix = mat4x4(X.x, Y.x, Z.x, 0.0f, X.y, Y.y, Z.y, 0.0f, X.z, Y.z, Z.z, 0.0f, -dot(X, Position), -dot(Y, Position), -dot(Z, Position), 1.0f);
+    ViewMatrixInverse = inverse(ViewMatrix);
+}
+
+void UpdateCamera(App* app)
+{
+    vec3 newPos(0, 0, 0);
+    float speed = app->camera.speed * app->deltaTime;
+
+    // keyboard movement
+
+    if (app->input.keys[Key::K_Q])
+    {
+        newPos.y -= speed;
+    }
+
+    if (app->input.keys[Key::K_R])
+    {
+        newPos.y -= speed;
+    }
+
+    if (app->input.keys[Key::K_W])
+    {
+        newPos -= app->camera.Z * speed;
+    }
+
+    if (app->input.keys[Key::K_S])
+    {
+        newPos += app->camera.Z * speed;
+    }
+
+    if (app->input.keys[Key::K_A])
+    {
+        newPos -= app->camera.X * speed;
+    }
+
+    if (app->input.keys[Key::K_D])
+    {
+        newPos += app->camera.X * speed;
+    }
+
+    app->camera.Position += newPos;
+    app->camera.currentReference += newPos;
+
+    
+
+
+    //if (app->input.keys[Key::K_SPACE])
+    //{
+    //    std::cout << "Position: " << app->camera.Position.x << " " << app->camera.Position.y << " " << app->camera.Position.z << std::endl;
+    //}
+
+
+    //mouse movement
+
+    if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) && app->input.mouseButtons[MouseButton::RIGHT])
+    {
+        float dx = app->input.mouseDelta.x;
+        float dy = app->input.mouseDelta.y;
+        //std::cout << "[R] Mouse Position: " << dx << " " << dy << " " << std::endl;
+
+        if (dx != 0)
+        {
+            float DeltaX = (float)dx * app->camera.sensitivity;
+
+            app->camera.X = rotate(app->camera.X, DeltaX, vec3(0.0f, 1.0f, 0.0f));
+            app->camera.Y = rotate(app->camera.Y, DeltaX, vec3(0.0f, 1.0f, 0.0f));
+            app->camera.Z = rotate(app->camera.Z, DeltaX, vec3(0.0f, 1.0f, 0.0f));
+        }
+
+        if (dy != 0)
+        {
+            float DeltaY = (float)dy * app->camera.sensitivity;
+
+            app->camera.Y = rotate(app->camera.Y, DeltaY, app->camera.X);
+            app->camera.Z = rotate(app->camera.Z, DeltaY, app->camera.X);
+
+            if (app->camera.Y.y < 0.0f)
+            {
+                app->camera.Z = vec3(0.0f, app->camera.Z.y > 0.0f ? 1.0f : -1.0f, 0.0f);
+                app->camera.Y = cross(app->camera.Z, app->camera.X);
+            }
+            app->camera.Position = app->camera.currentReference + app->camera.Z * length(app->camera.Position);
+        }
+
+    }
+
+    if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) && app->input.mouseButtons[MouseButton::LEFT])
+    {
+        float dx = app->input.mouseDelta.x;
+        float dy = app->input.mouseDelta.y;
+        //std::cout << "[L] Mouse Position: " << dx << " " << dy << " " << std::endl;
+
+        if (dx != 0)
+        {
+            float DeltaX = (float)dx * app->camera.sensitivity;
+
+            app->camera.X = rotate(app->camera.X, DeltaX, vec3(0.0f, 1.0f, 0.0f));
+            app->camera.Y = rotate(app->camera.Y, DeltaX, vec3(0.0f, 1.0f, 0.0f));
+            app->camera.Z = rotate(app->camera.Z, DeltaX, vec3(0.0f, 1.0f, 0.0f));
+        }
+
+        if (dy != 0)
+        {
+            float DeltaY = (float)dy * app->camera.sensitivity;
+
+            app->camera.Y = rotate(app->camera.Y, DeltaY, app->camera.X);
+            app->camera.Z = rotate(app->camera.Z, DeltaY, app->camera.X);
+
+            if (app->camera.Y.y < 0.0f)
+            {
+                app->camera.Z = vec3(0.0f, app->camera.Z.y > 0.0f ? 1.0f : -1.0f, 0.0f);
+                app->camera.Y = cross(app->camera.Z, app->camera.X);
+            }
+        }
+
+    }
+
+    CalculateViewMatrix(app->camera.Position, app->camera.X, app->camera.Y, app->camera.Z, app->camera.ViewMatrix, app->camera.ViewMatrixInverse);
+
+
+}
+
 void Init(App* app)
 {
     ErrorGuardOGL error("Init()", __FILE__, __LINE__);
@@ -507,14 +648,27 @@ void Init(App* app)
 
 
     // - textures
-    app->diceTexIdx = LoadTexture2D(app, "dice.png");
     app->whiteTexIdx = LoadTexture2D(app, "color_white.png");
     app->blackTexIdx = LoadTexture2D(app, "color_black.png");
     app->normalTexIdx = LoadTexture2D(app, "color_normal.png");
     app->magentaTexIdx = LoadTexture2D(app, "color_magenta.png");
+    app->diceTexIdx = LoadTexture2D(app, "dice.png");
 
 
     app->mode = Mode_TexturedMeshes;
+
+
+    // set camera variables
+    CalculateViewMatrix(app->camera.Position, app->camera.X, app->camera.Y, app->camera.Z, app->camera.ViewMatrix, app->camera.ViewMatrixInverse);
+
+    app->camera.X = vec3(1.0f, 0.0f, 0.0f);
+    app->camera.Y = vec3(0.0f, 1.0f, 0.0f);
+    app->camera.Z = vec3(0.0f, 0.0f, 1.0f);
+
+    app->camera.Position = vec3(5, 5.0, 5.0f);
+    app->camera.currentReference = vec3(0.0f, 0.0f, 0.0f);
+    app->camera.speed = 20.f;
+    app->camera.speed = 0.25f;
 }
 
 void Gui(App* app)
@@ -527,6 +681,9 @@ void Gui(App* app)
 void Update(App* app)
 {
     // You can handle app->input keyboard/mouse here
+    
+    UpdateCamera(app);
+
 
     for (u64 i = 0; i < app->programs.size(); i++)
     {
@@ -635,7 +792,7 @@ void Render(App* app)
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, tex->handle);
                 glUniform1i(app->programUniformTexture, 0);
-                std::cout << "Using texture: " << std::string(tex->filepath) << std::endl;
+                //std::cout << "Using texture: " << std::string(tex->filepath) << std::endl;
 
                 Submesh& submesh = mesh.submeshes[i];
                 glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
@@ -643,7 +800,7 @@ void Render(App* app)
                 //glPopDebugGroup();
             }
 
-            std::cout << "Next Render call --------------------------------------------------------------------" << std::endl;
+            //std::cout << "Next Render call --------------------------------------------------------------------" << std::endl;
 
         }
             break;

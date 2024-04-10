@@ -9,12 +9,14 @@
 
 
 
+
 typedef glm::vec2  vec2;
 typedef glm::vec3  vec3;
 typedef glm::vec4  vec4;
 typedef glm::ivec2 ivec2;
 typedef glm::ivec3 ivec3;
 typedef glm::ivec4 ivec4;
+typedef glm::mat4x4 mat4x4;
 
 struct Image
 {
@@ -117,6 +119,14 @@ struct Material
     u32 bumpTextureIdx;
 };
 
+struct Camera
+{
+    float speed;
+    float sensitivity;
+    vec3 X, Y, Z, Position, currentReference;
+    mat4x4 ViewMatrix, ViewMatrixInverse;
+};
+
 struct App
 {
     // Loop
@@ -162,6 +172,8 @@ struct App
     // VAO object to link our screen filling quad with our textured quad shader
     GLuint vao;
 
+    Camera camera;
+
 };
 
 struct VertexV3V2
@@ -171,7 +183,11 @@ struct VertexV3V2
 };
 
 
+vec3 rotate(const vec3& vector, float degrees, const vec3& axis);
 
+void CalculateViewMatrix(vec3 Position, vec3 X, vec3 Y, vec3 Z, mat4x4 ViewMatrix, mat4x4& ViewMatrixInverse);
+
+void UpdateCamera(App* app);
 
 void Init(App* app);
 
