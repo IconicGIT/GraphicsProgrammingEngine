@@ -332,9 +332,12 @@ void Init(App* app)
     if (GLVersion.major > 4 || (GLVersion.major == 4 && GLVersion.minor >= 3))
         glDebugMessageCallback(OnGlError, app);
 
-    u32 patrick = LoadModel(app, "Patrick/patrick_2.obj");
+    u32 model = LoadModel(app, "Models/Patrick/Patrick.obj");
 
-    if (patrick == UINT32_MAX) std::cout << "error loading patrick!" << std::endl;
+    if (model == UINT32_MAX) 
+        std::cout << "error loading model!" << std::endl;
+    else 
+        std::cout << "Loaded Model" << std::endl;
 
 
 
@@ -619,10 +622,12 @@ void Render(App* app)
             for (u32 i = 0; i < mesh.submeshes.size(); ++i)
             {
 
+                //glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 1, -1, "Patrick");
+                
                 GLuint vao = FindVAO(mesh, i, texturedMeshProgram);
                 glBindVertexArray(vao);
 
-                u32 submeshMaterialldx = model.materialIdx[i] - 1;
+                u32 submeshMaterialldx = model.materialIdx[i];
                 Material& submeshMaterial = app->materials[submeshMaterialldx];
 
                 Texture* tex = &app->textures[submeshMaterial.albedoTextureIdx];
@@ -634,6 +639,8 @@ void Render(App* app)
 
                 Submesh& submesh = mesh.submeshes[i];
                 glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
+                
+                //glPopDebugGroup();
             }
 
             std::cout << "Next Render call --------------------------------------------------------------------" << std::endl;
