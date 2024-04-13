@@ -8,7 +8,7 @@
 #include <glad/glad.h>
 
 
-
+#define BINDING(b) b
 
 typedef glm::vec2  vec2;
 typedef glm::vec3  vec3;
@@ -17,6 +17,12 @@ typedef glm::ivec2 ivec2;
 typedef glm::ivec3 ivec3;
 typedef glm::ivec4 ivec4;
 typedef glm::mat4x4 mat4x4;
+
+const mat4x4 IdentityMatrix = mat4x4(
+    1.0f, 0.0f, 0.0f, 0.0f,
+    0.0f, 1.0f, 0.0f, 0.0f,
+    0.0f, 0.0f, 1.0f, 0.0f,
+    0.0f, 0.0f, 0.0f, 1.0f);
 
 struct Image
 {
@@ -104,6 +110,10 @@ struct Mesh
     std::vector<Submesh> submeshes;
     GLuint vertexBufferHandle;
     GLuint indexBufferHandle;
+    GLuint uniformBufferHandle;
+
+    mat4x4 worldMatrix;
+    mat4x4 worldViewProjectionMatrix;
 };
 
 struct Material
@@ -125,6 +135,11 @@ struct Camera
     float sensitivity;
     vec3 X, Y, Z, Position, currentReference;
     mat4x4 ViewMatrix, ViewMatrixInverse;
+    float zNear;
+    float zFar;
+    float fov;
+
+    void SetValues();
 };
 
 struct App
@@ -174,6 +189,9 @@ struct App
 
     Camera camera;
 
+    int maxUnigormBufferSize;
+    int uniformBlockAlignment;
+
 };
 
 struct VertexV3V2
@@ -219,3 +237,7 @@ void OnGlError(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei l
 u32 LoadTexture2D(App* app, const char* filepath);
 
 GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program);
+
+mat4x4 SetPosition(const vec3& translation);
+
+mat4x4 SetScale(const float scale);

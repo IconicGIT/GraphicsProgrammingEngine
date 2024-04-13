@@ -326,6 +326,16 @@ GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program)
     return vaoHandle;
 }
 
+mat4x4 SetPosition(const vec3& translation)
+{
+    return translate(translation);
+}
+
+mat4x4 SetScale(const vec3& scaling)
+{
+    return glm::scale(scaling);
+}
+
 vec3 rotate(const vec3& vector, float degrees, const vec3& axis)
 {
     // Convert degrees to radians
@@ -470,9 +480,21 @@ void Init(App* app)
 {
     ErrorGuardOGL error("Init()", __FILE__, __LINE__);
 
+
     if (GLVersion.major > 4 || (GLVersion.major == 4 && GLVersion.minor >= 3))
         glDebugMessageCallback(OnGlError, app);
 
+
+    glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &app->maxUnigormBufferSize);
+    glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAlignment);
+
+
+    // set camera variables
+
+    app->camera.SetValues();
+
+
+    // load models
     u32 model = LoadModel(app, "Models/Patrick/Patrick.obj");
 
     if (model == UINT32_MAX) 
@@ -480,121 +502,132 @@ void Init(App* app)
     else 
         std::cout << "Loaded Model" << std::endl;
 
+    {
 
 
-    // TODO: Initialize your resources here!
-    // - vertex buffers
-    // - element/index buffers
-    // - vaos
-    // - programs (and retrieve uniform indices)
-    // - textures
+        // TODO: Initialize your resources here!
+        // - vertex buffers
+        // - element/index buffers
+        // - vaos
+        // - programs (and retrieve uniform indices)
+        // - textures
 
+
+
+
+        std::vector<float> vertices;
+
+        vertices.push_back(-0.5f);
+        vertices.push_back(-0.5f);
+        vertices.push_back(0.0f);
+
+        vertices.push_back(0.f);
+        vertices.push_back(0.f);
+
+
+        vertices.push_back(0.5f);
+        vertices.push_back(-0.5f);
+        vertices.push_back(0.0f);
+
+        vertices.push_back(1.f);
+        vertices.push_back(0.f);
+
+        vertices.push_back(0.5f);
+        vertices.push_back(0.5f);
+        vertices.push_back(0.0f);
+
+        vertices.push_back(1.f);
+        vertices.push_back(1.f);
+
+
+        vertices.push_back(-0.5f);
+        vertices.push_back(0.5f);
+        vertices.push_back(0.0f);
+
+        vertices.push_back(0.f);
+        vertices.push_back(1.f);
+
+
+        // - define vertex buffers
+        //const VertexV3V2 vertices[] =
+        //{
+        //    {glm::vec3(-0.5, -0.5, 0.0), glm::vec2(0,0)}, // bottom left
+        //    {glm::vec3( 0.5, -0.5, 0.0), glm::vec2(1,0)}, // bottom right
+        //    {glm::vec3( 0.5,  0.5, 0.0), glm::vec2(1,1)}, // top right
+        //    {glm::vec3(-0.5,  0.5, 0.0), glm::vec2(0,1)}, // top left
+        //};
+
+        std::vector<u32> indices = { 0,1,2, 0,2,3 };
+
+
+        //const u16 indices[] =
+        //{
+        //    0, 1, 2,
+        //    0, 2, 3
+        //};
+
+        // - init vertex buffers
+
+        //format and order of the vertex in vertex shader
+        VertexBufferLayout vertexBufferLayout;
+        vertexBufferLayout.attributes.push_back(VertexBufferAttribute{ 0, 3, 0 }); // 0: location, 3: components (3 floats per position), 0: offset
+        vertexBufferLayout.attributes.push_back(VertexBufferAttribute{ 1, 2, 3 * sizeof(float) }); // 0: location, 3: components (2 floats per texture coord), 0: offset (from start to this location, 3 floats come before this)
+        vertexBufferLayout.stride = 5 * sizeof(float); //3 for position + 2 for tex coords
+
+        //build submesh
+        Submesh submesh = {};
+        submesh.vertexBufferLayout = vertexBufferLayout;
+        submesh.vertices.swap(vertices);
+        submesh.indices.swap(indices);
+
+        Mesh m_quad;
+        m_quad.submeshes.push_back(submesh);
+
+        Model mod_quad;
+        mod_quad.meshIdx = 0;
+
+        //glGenBuffers(1, &app->embeddedVertices);
+        //glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
+        //glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), &vertices, GL_STATIC_DRAW);
+        //glBindBuffer(GL_ARRAY_BUFFER, 0);
+        //
+        //// - init element/index buffers
+        //glGenBuffers(1, &app->embeddedElements);
+        //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
+        //glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), &indices, GL_STATIC_DRAW);
+        //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        //
+        //// - vaos
+        //glGenVertexArrays(1, &app->vao);
+        //glBindVertexArray(app->vao);
+        //glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
+        //glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
+        //glEnableVertexAttribArray(0);
+        //glVertexAttribPointer(1, 2, GL_INT, GL_FALSE, sizeof(int), (void*)12);
+        //glEnableVertexAttribArray(2);
+        //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
+        //glBindVertexArray(0);
+
+    }
 
     
-
-    std::vector<float> vertices;
-    
-    vertices.push_back(-0.5f);
-    vertices.push_back(-0.5f);
-    vertices.push_back(0.0f);
-
-    vertices.push_back(0.f);
-    vertices.push_back(0.f);
-
-
-    vertices.push_back(0.5f);
-    vertices.push_back(-0.5f);
-    vertices.push_back(0.0f);
-
-    vertices.push_back(1.f);
-    vertices.push_back(0.f);
-
-    vertices.push_back(0.5f);
-    vertices.push_back(0.5f);
-    vertices.push_back(0.0f);
-
-    vertices.push_back(1.f);
-    vertices.push_back(1.f);
-
-
-    vertices.push_back(-0.5f);
-    vertices.push_back(0.5f);
-    vertices.push_back(0.0f);
-
-    vertices.push_back(0.f);
-    vertices.push_back(1.f);
     
 
-    // - define vertex buffers
-    //const VertexV3V2 vertices[] =
-    //{
-    //    {glm::vec3(-0.5, -0.5, 0.0), glm::vec2(0,0)}, // bottom left
-    //    {glm::vec3( 0.5, -0.5, 0.0), glm::vec2(1,0)}, // bottom right
-    //    {glm::vec3( 0.5,  0.5, 0.0), glm::vec2(1,1)}, // top right
-    //    {glm::vec3(-0.5,  0.5, 0.0), glm::vec2(0,1)}, // top left
-    //};
-    
-    std::vector<u32> indices = { 0,1,2, 0,2,3 };
 
-
-    //const u16 indices[] =
-    //{
-    //    0, 1, 2,
-    //    0, 2, 3
-    //};
-
-    // - init vertex buffers
-    
-    //format and order of the vertex in vertex shader
-    VertexBufferLayout vertexBufferLayout;
-    vertexBufferLayout.attributes.push_back(VertexBufferAttribute{ 0, 3, 0 }); // 0: location, 3: components (3 floats per position), 0: offset
-    vertexBufferLayout.attributes.push_back(VertexBufferAttribute{ 1, 2, 3 * sizeof(float) }); // 0: location, 3: components (2 floats per texture coord), 0: offset (from start to this location, 3 floats come before this)
-    vertexBufferLayout.stride = 5 * sizeof(float); //3 for position + 2 for tex coords
-
-    //build submesh
-    Submesh submesh = {};
-    submesh.vertexBufferLayout = vertexBufferLayout;
-    submesh.vertices.swap(vertices);
-    submesh.indices.swap(indices);
-
-    Mesh m_quad;
-    m_quad.submeshes.push_back(submesh);
-
-    Model mod_quad;
-    mod_quad.meshIdx = 0;
-
-    //glGenBuffers(1, &app->embeddedVertices);
-    //glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
-    //glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), &vertices, GL_STATIC_DRAW);
-    //glBindBuffer(GL_ARRAY_BUFFER, 0);
-    //
-    //// - init element/index buffers
-    //glGenBuffers(1, &app->embeddedElements);
-    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
-    //glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), &indices, GL_STATIC_DRAW);
-    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    //
-    //// - vaos
-    //glGenVertexArrays(1, &app->vao);
-    //glBindVertexArray(app->vao);
-    //glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
-    //glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
-    //glEnableVertexAttribArray(0);
-    //glVertexAttribPointer(1, 2, GL_INT, GL_FALSE, sizeof(int), (void*)12);
-    //glEnableVertexAttribArray(2);
-    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
-    //glBindVertexArray(0);
 
     // - programs (and retrieve uniform indices)
     app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "TEXTURED_GEOMETRY");
     Program& texturedGeometryProgram = app->programs[app->texturedGeometryProgramIdx];
 
-    //put attributes manually
-    //texturedGeometryProgram.vertexShaderLayout.attributes.push_back({ 0,3 });   //pos
-    //texturedGeometryProgram.vertexShaderLayout.attributes.push_back({ 1,3 });   //normal coor
-    //texturedGeometryProgram.vertexShaderLayout.attributes.push_back({ 2,2 });   //tex coor
-    //texturedGeometryProgram.vertexShaderLayout.attributes.push_back({ 3,3 });   //tangent coor
-    //texturedGeometryProgram.vertexShaderLayout.attributes.push_back({ 4,3 });   //bitangent coor
+
+    //print attribute blocks
+    //int activeShader = app->programs[0].handle;
+    //int blockIndex = glGetUniformBlockIndex(activeShader, "localParams");
+    //int blockSize;
+    //
+    //glGetActiveUniformBlockiv(activeShader, blockIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize);
+    //
+    //std::cout << "block index: " << blockIndex << " of size: " << blockSize << std::endl;
 
     //put attributes automatically
     int attCount;
@@ -646,6 +679,8 @@ void Init(App* app)
     app->programUniformTexture = glGetUniformLocation(texturedGeometryProgram.handle, "uTexture");
  
 
+    
+
 
     // - textures
     app->whiteTexIdx = LoadTexture2D(app, "color_white.png");
@@ -657,18 +692,8 @@ void Init(App* app)
 
     app->mode = Mode_TexturedMeshes;
 
-
-    // set camera variables
-    CalculateViewMatrix(app->camera.Position, app->camera.X, app->camera.Y, app->camera.Z, app->camera.ViewMatrix, app->camera.ViewMatrixInverse);
-
-    app->camera.X = vec3(1.0f, 0.0f, 0.0f);
-    app->camera.Y = vec3(0.0f, 1.0f, 0.0f);
-    app->camera.Z = vec3(0.0f, 0.0f, 1.0f);
-
-    app->camera.Position = vec3(5, 5.0, 5.0f);
-    app->camera.currentReference = vec3(0.0f, 0.0f, 0.0f);
-    app->camera.speed = 20.f;
-    app->camera.speed = 0.25f;
+    glEnable(GL_DEPTH_TEST);
+    
 }
 
 void Gui(App* app)
@@ -699,6 +724,34 @@ void Update(App* app)
         }
     }
 
+    for (size_t i = 0; i < app->meshes.size(); i++)
+    {
+        Mesh &mesh = app->meshes[i];
+
+        //update transform
+        float aspectRatio = (float)app->displaySize.x / (float)app->displaySize.y;
+        mat4x4 projectionMatrix = glm::perspective(glm::radians(app->camera.fov), aspectRatio, app->camera.zNear, app->camera.zFar);
+        mat4x4 view = glm::lookAt(app->camera.Position, app->camera.currentReference, vec3(0, 1, 0));
+
+        mesh.worldMatrix = IdentityMatrix;
+        mesh.worldViewProjectionMatrix = projectionMatrix * view * mesh.worldMatrix;
+
+        //opengl stuff
+        glBindBuffer(GL_UNIFORM_BUFFER, mesh.uniformBufferHandle);
+        u8* bufferData = (u8*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
+        u32 bufferHead = 0;
+
+        memcpy(bufferData + bufferHead, glm::value_ptr(mesh.worldMatrix), sizeof(mat4x4));
+        bufferHead += sizeof(mat4x4);
+
+        memcpy(bufferData + bufferHead, glm::value_ptr(mesh.worldViewProjectionMatrix), sizeof(mat4x4));
+        bufferHead += sizeof(mat4x4);
+
+        glUnmapBuffer(GL_UNIFORM_BUFFER);
+        
+
+    }
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void Render(App* app)
@@ -776,11 +829,30 @@ void Render(App* app)
             Mesh& mesh = app->meshes[model.meshIdx];
 
 
+            //uniform buffer data
+            u32 blockOffset = 0;
+            u32 blockSize = sizeof(mat4x4) * 2;
+
             for (u32 i = 0; i < mesh.submeshes.size(); ++i)
             {
+                //int activeShader = app->programs[0].handle;
+                //const char* names[] = { "uWorldMatrix", "uWorldViewProjectionMatrix" };
+                //GLuint nIndices[2];
+                //
+                //glGetUniformIndices(activeShader, 2, names, nIndices);
+                //
+                //for (size_t n = 0; n < 2; n++)
+                //{
+                //    std::cout << "vars: " << names[n] << std::endl;
+                //}
 
                 //glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 1, -1, "Patrick");
                 
+                //use uniform buffer
+                glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), mesh.uniformBufferHandle, blockOffset, blockSize);
+
+
+
                 GLuint vao = FindVAO(mesh, i, texturedMeshProgram);
                 glBindVertexArray(vao);
 
@@ -809,3 +881,20 @@ void Render(App* app)
     }
 }
 
+void Camera::SetValues()
+{
+
+    X = vec3(1.0f, 0.0f, 0.0f);
+    Y = vec3(0.0f, 1.0f, 0.0f);
+    Z = vec3(0.0f, 0.0f, 1.0f);
+
+    Position = vec3(5, 5.0, 5.0f);
+    currentReference = vec3(0.0f, 0.0f, 0.0f);
+    speed = 100;
+    speed = 0.25f;
+    zNear = 0.1f;
+    zFar = 1000.f;
+    fov = 60.f;;
+
+    CalculateViewMatrix(Position, X, Y, Z, ViewMatrix, ViewMatrixInverse);
+}

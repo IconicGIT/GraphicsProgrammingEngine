@@ -6,8 +6,15 @@
 #if defined(VERTEX) ///////////////////////////////////////////////////
 
 // TODO: Write your vertex shader here
-layout(location = 0) in vec3 aPosition;
-layout(location = 1) in vec3 aNormal;
+
+layout(binding = 1, std140) uniform localParams
+{
+	mat4 uWorldMatrix;
+	mat4 uWorldViewProjectionMatrix;
+};
+
+layout(location = 0) in vec3 aPosition;	// world space
+layout(location = 1) in vec3 aNormal;	// world space
 layout(location = 2) in vec2 aTexCoord;
 layout(location = 3) in vec3 aTangent;
 layout(location = 4) in vec3 aBitangent;
@@ -17,18 +24,16 @@ out vec3 vPosition;
 out vec3 vNormal;
 out vec3 vViewDir;
 
+
+
 void main()
 {
 	vTexCoord = aTexCoord;
-	vPosition = aPosition;
-	vNormal = aNormal;
+	vPosition = vec3(uWorldMatrix * vec4(aPosition, 1.0));
+	vNormal =	vec3(uWorldMatrix * vec4(aNormal, 0.0));
 	//vViewDir = aViewDir;
 
-	float clippingScale = 5.0;
-
-	gl_Position = vec4(aPosition, clippingScale);
-
-	gl_Position.z = -gl_Position.z;
+	gl_Position = uWorldViewProjectionMatrix * vec4(aPosition, 1.0);
 }
 
 #elif defined(FRAGMENT) ///////////////////////////////////////////////

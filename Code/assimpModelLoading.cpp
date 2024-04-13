@@ -164,6 +164,7 @@ void ProcessAssimpNode(const aiScene* scene, aiNode* node, Mesh* myMesh, u32 bas
 
 u32 LoadModel(App* app, const char* filename)
 {
+
     const aiScene* scene = aiImportFile(filename,
         aiProcess_Triangulate |
         aiProcess_GenSmoothNormals |
@@ -213,6 +214,8 @@ u32 LoadModel(App* app, const char* filename)
         indexBufferSize += mesh.submeshes[i].indices.size() * sizeof(u32);
     }
 
+    
+
     glGenBuffers(1, &mesh.vertexBufferHandle);
     glBindBuffer(GL_ARRAY_BUFFER, mesh.vertexBufferHandle);
     glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, NULL, GL_STATIC_DRAW);
@@ -220,6 +223,13 @@ u32 LoadModel(App* app, const char* filename)
     glGenBuffers(1, &mesh.indexBufferHandle);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.indexBufferHandle);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexBufferSize, NULL, GL_STATIC_DRAW);
+
+    glGenBuffers(1, &mesh.uniformBufferHandle);
+    glBindBuffer(GL_UNIFORM_BUFFER, mesh.uniformBufferHandle);
+    glBufferData(GL_UNIFORM_BUFFER, app->maxUnigormBufferSize, NULL, GL_STREAM_DRAW);
+        
+    
+
 
     u32 indicesOffset = 0;
     u32 verticesOffset = 0;
@@ -238,9 +248,15 @@ u32 LoadModel(App* app, const char* filename)
         mesh.submeshes[i].indexOffset = indicesOffset;
         indicesOffset += indicesSize;
     }
+    ErrorGuardOGL error("LoadModel()", __FILE__, __LINE__);
+
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+    //glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+
+    
 
     return modelIdx;
 }
