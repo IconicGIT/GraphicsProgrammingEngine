@@ -326,15 +326,15 @@ GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program)
     return vaoHandle;
 }
 
-mat4x4 SetPosition(const vec3& translation)
-{
-    return translate(translation);
-}
-
-mat4x4 SetScale(const vec3& scaling)
-{
-    return glm::scale(scaling);
-}
+//mat4x4 SetPosition(const vec3& translation)
+//{
+//    return translate(translation);
+//}
+//
+//mat4x4 SetScale(const vec3& scaling)
+//{
+//    return glm::scale(scaling);
+//}
 
 vec3 rotate(const vec3& vector, float degrees, const vec3& axis)
 {
@@ -351,6 +351,25 @@ vec3 rotate(const vec3& vector, float degrees, const vec3& axis)
     return glm::vec3(rotatedVector);
 }
 
+vec3 GetTranslation(const mat4x4 &M)
+{
+    //return(vec3(M[12], M[13], M[14]));
+    return(vec3(M[3].x, M[3].y, M[3].z));
+}
+
+vec3 GetScaling(mat4x4& M)
+{
+    //return (vec3(M[0], M[5], M[10]));
+    return (vec3(M[0].x, M[1].y, M[2].z));
+}
+
+void SetScaling(mat4x4& M, float x, float y, float z)
+{
+    M[0].x = x;
+    M[1].y = y;
+    M[2].z = z;
+}
+
 void Camera::CalculateViewMatrix()
 {
     ViewMatrix = mat4x4(X.x, Y.x, Z.x, 0.0f, X.y, Y.y, Z.y, 0.0f, X.z, Y.z, Z.z, 0.0f, -dot(X, Position), -dot(Y, Position), -dot(Z, Position), 1.0f);
@@ -360,7 +379,7 @@ void Camera::CalculateViewMatrix()
 void Camera::UpdateCamera(App* app)
 {
     vec3 newPos(0, 0, 0);
-    float spd = speed * app->deltaTime * 1000.f;
+    float spd = speed * app->deltaTime;
 
     // keyboard movement
 
@@ -490,7 +509,7 @@ void Init(App* app)
         glDebugMessageCallback(OnGlError, app);
 
 
-    glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &app->maxUnigormBufferSize);
+    glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &app->maxUniformBufferSize);
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &app->uniformBlockAlignment);
 
 
@@ -706,13 +725,43 @@ void Gui(App* app)
     ImGui::Begin("Info");
     ImGui::Text("FPS: %f", 1.0f/app->deltaTime);
     
-    ImGui::DragFloat3("CamPos", &app->camera.Position[0], 0.1f, -1000, 1000, "%f", 0);
-    ImGui::DragFloat3("CamRef", &app->camera.currentReference[0], 0.1f, -1000, 1000, "%f", 0);
+    ImGui::Text("Scene Objects");
+    ImGui::Separator();
+    if (app->sceneObjects.size() > 0)
+    for (size_t i = 0; i < app->sceneObjects.size(); i++)
+    {
+        SceneObject& scObj = app->sceneObjects[i];
+        std::string scObjName = scObj.name + "##" + std::to_string(i);
+        if (ImGui::TreeNode(scObjName.c_str()))
+        {
+            if (ImGui::CollapsingHeader("Transform"))
+            {
+                ImGui::DragFloat3("Translation", &scObj.worldMatrix[3][0], 0.05f, 0.0f, 0.0f, "%.2f");
+
+                vec3 newScale = GetScaling(scObj.worldMatrix);
+                if (ImGui::DragFloat3("Scaling", &newScale[0], 0.05f, 0.0f, 0.0f, "%.2f"))
+                {
+                    SetScaling(scObj.worldMatrix, newScale.x, newScale.y, newScale.z);
+                }
 
 
-    ImGui::DragFloat3("X:", &app->camera.X[0], 0.1f, 0, 1000, "%f", 0);
-    ImGui::DragFloat3("Y:", &app->camera.Y[0], 0.1f, 0, 1000, "%f", 0);
-    ImGui::DragFloat3("Z:", &app->camera.Z[0], 0.1f, 0, 1000, "%f", 0);
+                //float newPositionY = scObj.worldMatrix.translation().y;
+                //float newPositionZ = scObj.worldMatrix.translation().z;
+            }
+
+            ImGui::TreePop();
+        }
+    }
+    ImGui::Separator();
+
+
+    //ImGui::DragFloat3("CamPos", &app->camera.Position[0], 0.1f, -1000, 1000, "%f", 0);
+    //ImGui::DragFloat3("CamRef", &app->camera.currentReference[0], 0.1f, -1000, 1000, "%f", 0);
+    //
+    //
+    //ImGui::DragFloat3("X:", &app->camera.X[0], 0.1f, 0, 1000, "%f", 0);
+    //ImGui::DragFloat3("Y:", &app->camera.Y[0], 0.1f, 0, 1000, "%f", 0);
+    //ImGui::DragFloat3("Z:", &app->camera.Z[0], 0.1f, 0, 1000, "%f", 0);
 
     ImGui::End();
 }
@@ -747,7 +796,8 @@ void Update(App* app)
         mat4x4 projectionMatrix = glm::perspective(glm::radians(app->camera.fov), aspectRatio, app->camera.zNear, app->camera.zFar);
         mat4x4 view = glm::lookAt(app->camera.Position, app->camera.currentReference, vec3(0, 1, 0));
 
-        sceneObject.worldMatrix = IdentityMatrix;
+        //update transform and view matrices
+        //sceneObject.worldMatrix = IdentityMatrix; --> only when setting the mesh/object;
         sceneObject.worldViewProjectionMatrix = projectionMatrix * view * sceneObject.worldMatrix;
 
         //opengl stuff
@@ -839,61 +889,53 @@ void Render(App* app)
 
             Program& texturedMeshProgram = app ->programs[app->texturedGeometryProgramIdx];
             glUseProgram(texturedMeshProgram.handle);
-            Model& model = app->models[0]; //app->model does not exist
-            Mesh& mesh = app->sceneObjects[model.meshIdx].mesh;
 
-
-            //uniform buffer data
-            u32 blockOffset = 0;
-            u32 blockSize = sizeof(mat4x4) * 2;
-
-            for (u32 i = 0; i < mesh.submeshes.size(); ++i)
+            if (app->models.size() > 0)
+            for (size_t m = 0; m < app->models.size(); m++)
             {
-                //int activeShader = app->programs[0].handle;
-                //const char* names[] = { "uWorldMatrix", "uWorldViewProjectionMatrix" };
-                //GLuint nIndices[2];
-                //
-                //glGetUniformIndices(activeShader, 2, names, nIndices);
-                //
-                //for (size_t n = 0; n < 2; n++)
-                //{
-                //    std::cout << "vars: " << names[n] << std::endl;
-                //}
+                Model& model = app->models[m]; //app->model does not exist
+                Mesh& mesh = app->sceneObjects[model.meshIdx].mesh;
 
-                //glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 1, -1, "Patrick");
-                
-                //use uniform buffer
-                glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), mesh.uniformBufferHandle, blockOffset, blockSize);
+                //uniform buffer data
+                u32 blockOffset = 0;
+                u32 blockSize = sizeof(mat4x4) * 2;
 
+                for (u32 i = 0; i < mesh.submeshes.size(); ++i)
+                {
 
+                    //glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 1, -1, "Patrick");
 
-                GLuint vao = FindVAO(mesh, i, texturedMeshProgram);
-                glBindVertexArray(vao);
+                    //use uniform buffer
+                    glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), mesh.uniformBufferHandle, blockOffset, blockSize);
 
-                u32 submeshMaterialldx = model.materialIdx[i];
-                Material& submeshMaterial = app->materials[submeshMaterialldx];
+                    GLuint vao = FindVAO(mesh, i, texturedMeshProgram);
+                    glBindVertexArray(vao);
 
-                Texture* tex = &app->textures[submeshMaterial.albedoTextureIdx];
+                    u32 submeshMaterialldx = model.materialIdx[i];
+                    Material& submeshMaterial = app->materials[submeshMaterialldx];
 
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, tex->handle);
-                glUniform1i(app->programUniformTexture, 0);
-                //std::cout << "Using texture: " << std::string(tex->filepath) << std::endl;
+                    Texture* tex = &app->textures[submeshMaterial.albedoTextureIdx];
 
-                Submesh& submesh = mesh.submeshes[i];
-                glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
-                
-                //glPopDebugGroup();
+                    glActiveTexture(GL_TEXTURE0);
+                    glBindTexture(GL_TEXTURE_2D, tex->handle);
+                    glUniform1i(app->programUniformTexture, 0);
+                    //std::cout << "Using texture: " << std::string(tex->filepath) << std::endl;
+
+                    Submesh& submesh = mesh.submeshes[i];
+                    glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
+
+                    //glPopDebugGroup();
+                }
+                //std::cout << "Next Render call --------------------------------------------------------------------" << std::endl;
             }
-
-            //std::cout << "Next Render call --------------------------------------------------------------------" << std::endl;
-
         }
             break;
 
         default:;
     }
 }
+
+
 
 void Camera::SetValues()
 {
@@ -905,7 +947,7 @@ void Camera::SetValues()
     sensitivity = 0.5f;
     Position = vec3(5, 5.0, 5.0f);
     currentReference = vec3(0.0f, 0.0f, 0.0f);
-    speed = 0.01f;
+    speed = 10.f;
     zNear = 0.1f;
     zFar = 1000.f;
     fov = 60.f;;

@@ -185,6 +185,8 @@ u32 LoadModel(App* app, const char* filename)
     SceneObject& scObj = app->sceneObjects.back();
     Mesh& mesh = scObj.mesh;
     u32 meshIdx = (u32)app->sceneObjects.size() - 1u;
+    scObj.name = "Object " + std::to_string(meshIdx);
+    scObj.worldMatrix = IdentityMatrix;
 
     app->models.push_back(Model{});
     Model& model = app->models.back();
@@ -227,7 +229,7 @@ u32 LoadModel(App* app, const char* filename)
 
     glGenBuffers(1, &mesh.uniformBufferHandle);
     glBindBuffer(GL_UNIFORM_BUFFER, mesh.uniformBufferHandle);
-    glBufferData(GL_UNIFORM_BUFFER, app->maxUnigormBufferSize, NULL, GL_STREAM_DRAW);
+    glBufferData(GL_UNIFORM_BUFFER, app->maxUniformBufferSize, NULL, GL_STREAM_DRAW);
         
     
 
@@ -254,7 +256,7 @@ u32 LoadModel(App* app, const char* filename)
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
-    //glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 
     

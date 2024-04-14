@@ -119,6 +119,7 @@ struct Mesh
 
 struct SceneObject
 {
+    std::string name;
     Mesh mesh;
     mat4x4 worldMatrix;
     mat4x4 worldViewProjectionMatrix;
@@ -140,6 +141,7 @@ struct App;
 
 struct Camera
 {
+
     float speed;
     float sensitivity;
     vec3 X, Y, Z, Position, currentReference;
@@ -200,7 +202,7 @@ struct App
 
     Camera camera;
 
-    int maxUnigormBufferSize;
+    int maxUniformBufferSize;
     int uniformBlockAlignment;
 
 };
@@ -213,9 +215,6 @@ struct VertexV3V2
 
 
 vec3 rotate(const vec3& vector, float degrees, const vec3& axis);
-
-
-
 
 
 void Init(App* app);
