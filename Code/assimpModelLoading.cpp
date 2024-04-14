@@ -181,9 +181,10 @@ u32 LoadModel(App* app, const char* filename)
         return UINT32_MAX;
     }
 
-    app->meshes.push_back(Mesh{});
-    Mesh& mesh = app->meshes.back();
-    u32 meshIdx = (u32)app->meshes.size() - 1u;
+    app->sceneObjects.push_back(SceneObject{});
+    SceneObject& scObj = app->sceneObjects.back();
+    Mesh& mesh = scObj.mesh;
+    u32 meshIdx = (u32)app->sceneObjects.size() - 1u;
 
     app->models.push_back(Model{});
     Model& model = app->models.back();

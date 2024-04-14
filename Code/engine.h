@@ -94,6 +94,8 @@ struct VertexBufferLayout
 };
 
 
+
+
 struct Submesh
 {
     VertexBufferLayout vertexBufferLayout;
@@ -112,10 +114,15 @@ struct Mesh
     GLuint indexBufferHandle;
     GLuint uniformBufferHandle;
 
+    
+};
+
+struct SceneObject
+{
+    Mesh mesh;
     mat4x4 worldMatrix;
     mat4x4 worldViewProjectionMatrix;
 };
-
 struct Material
 {
     std::string name;
@@ -161,11 +168,11 @@ struct App
 
     ivec2 displaySize;
 
-    std::vector<Texture>    textures;
-    std::vector<Program>    programs;
-    std::vector<Model>      models;
-    std::vector<Material>   materials;
-    std::vector<Mesh>       meshes;
+    std::vector<Texture>        textures;
+    std::vector<Program>        programs;
+    std::vector<Model>          models;
+    std::vector<Material>       materials;
+    std::vector<SceneObject>    sceneObjects;
 
     // program indices
     u32 texturedGeometryProgramIdx;

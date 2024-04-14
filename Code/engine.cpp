@@ -738,27 +738,27 @@ void Update(App* app)
         }
     }
 
-    for (size_t i = 0; i < app->meshes.size(); i++)
+    for (size_t i = 0; i < app->sceneObjects.size(); i++)
     {
-        Mesh &mesh = app->meshes[i];
+        SceneObject &sceneObject = app->sceneObjects[i];
 
         //update transform
         float aspectRatio = (float)app->displaySize.x / (float)app->displaySize.y;
         mat4x4 projectionMatrix = glm::perspective(glm::radians(app->camera.fov), aspectRatio, app->camera.zNear, app->camera.zFar);
         mat4x4 view = glm::lookAt(app->camera.Position, app->camera.currentReference, vec3(0, 1, 0));
 
-        mesh.worldMatrix = IdentityMatrix;
-        mesh.worldViewProjectionMatrix = projectionMatrix * view * mesh.worldMatrix;
+        sceneObject.worldMatrix = IdentityMatrix;
+        sceneObject.worldViewProjectionMatrix = projectionMatrix * view * sceneObject.worldMatrix;
 
         //opengl stuff
-        glBindBuffer(GL_UNIFORM_BUFFER, mesh.uniformBufferHandle);
+        glBindBuffer(GL_UNIFORM_BUFFER, sceneObject.mesh.uniformBufferHandle);
         u8* bufferData = (u8*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
         u32 bufferHead = 0;
 
-        memcpy(bufferData + bufferHead, glm::value_ptr(mesh.worldMatrix), sizeof(mat4x4));
+        memcpy(bufferData + bufferHead, glm::value_ptr(sceneObject.worldMatrix), sizeof(mat4x4));
         bufferHead += sizeof(mat4x4);
 
-        memcpy(bufferData + bufferHead, glm::value_ptr(mesh.worldViewProjectionMatrix), sizeof(mat4x4));
+        memcpy(bufferData + bufferHead, glm::value_ptr(sceneObject.worldViewProjectionMatrix), sizeof(mat4x4));
         bufferHead += sizeof(mat4x4);
 
         glUnmapBuffer(GL_UNIFORM_BUFFER);
@@ -840,7 +840,7 @@ void Render(App* app)
             Program& texturedMeshProgram = app ->programs[app->texturedGeometryProgramIdx];
             glUseProgram(texturedMeshProgram.handle);
             Model& model = app->models[0]; //app->model does not exist
-            Mesh& mesh = app->meshes[model.meshIdx];
+            Mesh& mesh = app->sceneObjects[model.meshIdx].mesh;
 
 
             //uniform buffer data
@@ -905,7 +905,7 @@ void Camera::SetValues()
     sensitivity = 0.5f;
     Position = vec3(5, 5.0, 5.0f);
     currentReference = vec3(0.0f, 0.0f, 0.0f);
-    speed = 0.005f;
+    speed = 0.01f;
     zNear = 0.1f;
     zFar = 1000.f;
     fov = 60.f;;
