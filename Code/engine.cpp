@@ -351,58 +351,59 @@ vec3 rotate(const vec3& vector, float degrees, const vec3& axis)
     return glm::vec3(rotatedVector);
 }
 
-void CalculateViewMatrix(vec3 Position, vec3 X, vec3 Y, vec3 Z, mat4x4 ViewMatrix, mat4x4& ViewMatrixInverse)
+void Camera::CalculateViewMatrix()
 {
     ViewMatrix = mat4x4(X.x, Y.x, Z.x, 0.0f, X.y, Y.y, Z.y, 0.0f, X.z, Y.z, Z.z, 0.0f, -dot(X, Position), -dot(Y, Position), -dot(Z, Position), 1.0f);
     ViewMatrixInverse = inverse(ViewMatrix);
 }
 
-void UpdateCamera(App* app)
+void Camera::UpdateCamera(App* app)
 {
     vec3 newPos(0, 0, 0);
-    float speed = app->camera.speed * app->deltaTime;
+    float spd = speed * app->deltaTime * 1000.f;
 
     // keyboard movement
 
+
     if (app->input.keys[Key::K_Q])
     {
-        newPos.y -= speed;
+        newPos.y -= spd;
     }
 
-    if (app->input.keys[Key::K_R])
+    if (app->input.keys[Key::K_E])
     {
-        newPos.y -= speed;
+        newPos.y += spd;
     }
 
     if (app->input.keys[Key::K_W])
     {
-        newPos -= app->camera.Z * speed;
+        newPos -= Z * spd;
     }
 
     if (app->input.keys[Key::K_S])
     {
-        newPos += app->camera.Z * speed;
+        newPos += Z * spd;
     }
 
     if (app->input.keys[Key::K_A])
     {
-        newPos -= app->camera.X * speed;
+        newPos -= X * spd;
     }
 
     if (app->input.keys[Key::K_D])
     {
-        newPos += app->camera.X * speed;
+        newPos += X * spd;
     }
 
-    app->camera.Position += newPos;
-    app->camera.currentReference += newPos;
+    Position += newPos;
+    currentReference += newPos;
 
     
 
 
     //if (app->input.keys[Key::K_SPACE])
     //{
-    //    std::cout << "Position: " << app->camera.Position.x << " " << app->camera.Position.y << " " << app->camera.Position.z << std::endl;
+    //    std::cout << "Position: " << Position.x << " " << Position.y << " " << Position.z << std::endl;
     //}
 
 
@@ -414,31 +415,35 @@ void UpdateCamera(App* app)
         float dy = app->input.mouseDelta.y;
         //std::cout << "[R] Mouse Position: " << dx << " " << dy << " " << std::endl;
 
+        Position -= currentReference;
+
         if (dx != 0)
         {
-            float DeltaX = (float)dx * app->camera.sensitivity;
+            float DeltaX = (float)dx * sensitivity;
 
-            app->camera.X = rotate(app->camera.X, DeltaX, vec3(0.0f, 1.0f, 0.0f));
-            app->camera.Y = rotate(app->camera.Y, DeltaX, vec3(0.0f, 1.0f, 0.0f));
-            app->camera.Z = rotate(app->camera.Z, DeltaX, vec3(0.0f, 1.0f, 0.0f));
+            X = rotate(X, DeltaX, vec3(0.0f, 1.0f, 0.0f));
+            Y = rotate(Y, DeltaX, vec3(0.0f, 1.0f, 0.0f));
+            Z = rotate(Z, DeltaX, vec3(0.0f, 1.0f, 0.0f));
         }
 
         if (dy != 0)
         {
-            float DeltaY = (float)dy * app->camera.sensitivity;
+            float DeltaY = (float)dy * sensitivity;
 
-            app->camera.Y = rotate(app->camera.Y, DeltaY, app->camera.X);
-            app->camera.Z = rotate(app->camera.Z, DeltaY, app->camera.X);
+            Y = rotate(Y, DeltaY, X);
+            Z = rotate(Z, DeltaY, X);
 
-            if (app->camera.Y.y < 0.0f)
+            if (Y.y < 0.0f)
             {
-                app->camera.Z = vec3(0.0f, app->camera.Z.y > 0.0f ? 1.0f : -1.0f, 0.0f);
-                app->camera.Y = cross(app->camera.Z, app->camera.X);
+                Z = vec3(0.0f, Z.y > 0.0f ? 1.0f : -1.0f, 0.0f);
+                Y = cross(Z, X);
             }
-            app->camera.Position = app->camera.currentReference + app->camera.Z * length(app->camera.Position);
+
         }
+        Position = currentReference + Z * length(Position);
 
     }
+
 
     if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) && app->input.mouseButtons[MouseButton::LEFT])
     {
@@ -448,30 +453,30 @@ void UpdateCamera(App* app)
 
         if (dx != 0)
         {
-            float DeltaX = (float)dx * app->camera.sensitivity;
+            float DeltaX = (float)dx * sensitivity * 0.5f;
 
-            app->camera.X = rotate(app->camera.X, DeltaX, vec3(0.0f, 1.0f, 0.0f));
-            app->camera.Y = rotate(app->camera.Y, DeltaX, vec3(0.0f, 1.0f, 0.0f));
-            app->camera.Z = rotate(app->camera.Z, DeltaX, vec3(0.0f, 1.0f, 0.0f));
+            X = rotate(X, DeltaX, vec3(0.0f, 1.0f, 0.0f));
+            Y = rotate(Y, DeltaX, vec3(0.0f, 1.0f, 0.0f));
+            Z = rotate(Z, DeltaX, vec3(0.0f, 1.0f, 0.0f));
         }
 
         if (dy != 0)
         {
-            float DeltaY = (float)dy * app->camera.sensitivity;
+            float DeltaY = (float)dy * sensitivity * 0.5f;
 
-            app->camera.Y = rotate(app->camera.Y, DeltaY, app->camera.X);
-            app->camera.Z = rotate(app->camera.Z, DeltaY, app->camera.X);
+            Y = rotate(Y, DeltaY, X);
+            Z = rotate(Z, DeltaY, X);
 
-            if (app->camera.Y.y < 0.0f)
+            if (Y.y < 0.0f)
             {
-                app->camera.Z = vec3(0.0f, app->camera.Z.y > 0.0f ? 1.0f : -1.0f, 0.0f);
-                app->camera.Y = cross(app->camera.Z, app->camera.X);
+                Z = vec3(0.0f, Z.y > 0.0f ? 1.0f : -1.0f, 0.0f);
+                Y = cross(Z, X);
             }
         }
-
+        currentReference = Position - Z * length(Position);
     }
 
-    CalculateViewMatrix(app->camera.Position, app->camera.X, app->camera.Y, app->camera.Z, app->camera.ViewMatrix, app->camera.ViewMatrixInverse);
+    CalculateViewMatrix();
 
 
 }
@@ -700,6 +705,15 @@ void Gui(App* app)
 {
     ImGui::Begin("Info");
     ImGui::Text("FPS: %f", 1.0f/app->deltaTime);
+    
+    ImGui::DragFloat3("CamPos", &app->camera.Position[0], 0.1f, -1000, 1000, "%f", 0);
+    ImGui::DragFloat3("CamRef", &app->camera.currentReference[0], 0.1f, -1000, 1000, "%f", 0);
+
+
+    ImGui::DragFloat3("X:", &app->camera.X[0], 0.1f, 0, 1000, "%f", 0);
+    ImGui::DragFloat3("Y:", &app->camera.Y[0], 0.1f, 0, 1000, "%f", 0);
+    ImGui::DragFloat3("Z:", &app->camera.Z[0], 0.1f, 0, 1000, "%f", 0);
+
     ImGui::End();
 }
 
@@ -707,8 +721,8 @@ void Update(App* app)
 {
     // You can handle app->input keyboard/mouse here
     
-    UpdateCamera(app);
-
+    app->camera.UpdateCamera(app);
+    //std::cout << 1.f / app->deltaTime << " / " << 1.f / app->deltaTime * 10.f << " / " << 1.f / app->deltaTime * 100.f << " / " << 1.f / app->deltaTime * 1000.f<< std::endl;
 
     for (u64 i = 0; i < app->programs.size(); i++)
     {
@@ -888,13 +902,13 @@ void Camera::SetValues()
     Y = vec3(0.0f, 1.0f, 0.0f);
     Z = vec3(0.0f, 0.0f, 1.0f);
 
+    sensitivity = 0.5f;
     Position = vec3(5, 5.0, 5.0f);
     currentReference = vec3(0.0f, 0.0f, 0.0f);
-    speed = 100;
-    speed = 0.25f;
+    speed = 0.005f;
     zNear = 0.1f;
     zFar = 1000.f;
     fov = 60.f;;
 
-    CalculateViewMatrix(Position, X, Y, Z, ViewMatrix, ViewMatrixInverse);
+    CalculateViewMatrix();
 }

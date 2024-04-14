@@ -129,6 +129,8 @@ struct Material
     u32 bumpTextureIdx;
 };
 
+struct App;
+
 struct Camera
 {
     float speed;
@@ -139,6 +141,8 @@ struct Camera
     float zFar;
     float fov;
 
+    void UpdateCamera(App* app);
+    void CalculateViewMatrix();
     void SetValues();
 };
 
@@ -203,9 +207,9 @@ struct VertexV3V2
 
 vec3 rotate(const vec3& vector, float degrees, const vec3& axis);
 
-void CalculateViewMatrix(vec3 Position, vec3 X, vec3 Y, vec3 Z, mat4x4 ViewMatrix, mat4x4& ViewMatrixInverse);
 
-void UpdateCamera(App* app);
+
+
 
 void Init(App* app);
 
