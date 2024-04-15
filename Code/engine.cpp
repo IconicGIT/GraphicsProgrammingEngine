@@ -801,6 +801,7 @@ void Update(App* app)
             program.lastWriteTimestamp = currentTimestamp;
         }
     }
+    u32 bufferHead = 0;
 
     for (size_t i = 0; i < app->sceneObjects.size(); i++)
     {
@@ -816,9 +817,8 @@ void Update(App* app)
         sceneObject.worldViewProjectionMatrix = projectionMatrix * view * sceneObject.worldMatrix;
 
         //opengl stuff
-        glBindBuffer(GL_UNIFORM_BUFFER, sceneObject.mesh.uniformBufferHandle);
+        glBindBuffer(GL_UNIFORM_BUFFER, app->uniformBufferHandle);
         u8* bufferData = (u8*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
-        u32 bufferHead = 0;
         bufferHead = Align(bufferHead, app->uniformBlockAlignment);
 
         sceneObject.localParamsOffset = bufferHead;
@@ -915,7 +915,8 @@ void Render(App* app)
             for (size_t m = 0; m < app->models.size(); m++)
             {
                 Model& model = app->models[m]; //app->model does not exist
-                Mesh& mesh = app->sceneObjects[model.meshIdx].mesh;
+                SceneObject& scObj = app->sceneObjects[model.meshIdx];
+                Mesh& mesh = scObj.mesh;
 
                 //uniform buffer data
                 u32 blockOffset = 0;
@@ -927,7 +928,7 @@ void Render(App* app)
                     //glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 1, -1, "Patrick");
 
                     //use uniform buffer
-                    glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), mesh.uniformBufferHandle, blockOffset, blockSize);
+                    glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->uniformBufferHandle, scObj.localParamsOffset, scObj.localParamsSize);
 
                     GLuint vao = FindVAO(mesh, i, texturedMeshProgram);
                     glBindVertexArray(vao);

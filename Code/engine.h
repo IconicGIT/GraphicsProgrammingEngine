@@ -112,7 +112,6 @@ struct Mesh
     std::vector<Submesh> submeshes;
     GLuint vertexBufferHandle;
     GLuint indexBufferHandle;
-    GLuint uniformBufferHandle;
 
     
 };
