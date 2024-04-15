@@ -227,13 +227,6 @@ u32 LoadModel(App* app, const char* filename)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.indexBufferHandle);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexBufferSize, NULL, GL_STATIC_DRAW);
 
-    glGenBuffers(1, &mesh.uniformBufferHandle);
-    glBindBuffer(GL_UNIFORM_BUFFER, mesh.uniformBufferHandle);
-    glBufferData(GL_UNIFORM_BUFFER, app->maxUniformBufferSize, NULL, GL_STREAM_DRAW);
-        
-    
-
-
     u32 indicesOffset = 0;
     u32 verticesOffset = 0;
 
@@ -256,10 +249,6 @@ u32 LoadModel(App* app, const char* filename)
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-
-    
 
     return modelIdx;
 }

@@ -336,6 +336,11 @@ GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program)
 //    return glm::scale(scaling);
 //}
 
+u32 Align(u32 value, u32 alignment)
+{
+    return (value + alignment - 1) & ~(alignment - 1);
+}
+
 vec3 rotate(const vec3& vector, float degrees, const vec3& axis)
 {
     // Convert degrees to radians
@@ -355,6 +360,14 @@ vec3 GetTranslation(const mat4x4 &M)
 {
     //return(vec3(M[12], M[13], M[14]));
     return(vec3(M[3].x, M[3].y, M[3].z));
+}
+
+void SetTranslation(mat4x4& M, float x, float y, float z)
+{
+    M[3].x = x;
+    M[3].y = y;
+    M[3].z = z;
+    //return(vec3(M[12], M[13], M[14]));
 }
 
 vec3 GetScaling(mat4x4& M)
@@ -519,13 +532,10 @@ void Init(App* app)
 
 
     // load models
-    u32 model = LoadModel(app, "Models/Patrick/Patrick.obj");
+    LoadModel(app, "Models/Patrick/Patrick.obj");
+    LoadModel(app, "Models/Patrick/Patrick.obj");
 
-    if (model == UINT32_MAX) 
-        std::cout << "error loading model!" << std::endl;
-    else 
-        std::cout << "Loaded Model" << std::endl;
-
+    
     {
 
 
@@ -697,7 +707,7 @@ void Init(App* app)
         texturedGeometryProgram.vertexShaderLayout.attributes.push_back({ location, attribSize });
 
         // Store or process the attribute information as needed
-        std::cout << "Attribute " << i << ": Name = " << attributeName << ", Size = " << size << ", Type = " << type << ", Location = " << location << std::endl;
+        std::cout << "Attribute " << i << ": Name = " << attributeName << ", Size = " << size << ", Type = " << type << ", Location = " << (int)location << std::endl;
     }
 
     app->programUniformTexture = glGetUniformLocation(texturedGeometryProgram.handle, "uTexture");
@@ -717,7 +727,12 @@ void Init(App* app)
     app->mode = Mode_TexturedMeshes;
 
     glEnable(GL_DEPTH_TEST);
-    
+
+    glGenBuffers(1, &app->uniformBufferHandle);
+    glBindBuffer(GL_UNIFORM_BUFFER, app->uniformBufferHandle);
+    glBufferData(GL_UNIFORM_BUFFER, app->maxUniformBufferSize, NULL, GL_STREAM_DRAW);
+
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void Gui(App* app)
@@ -804,12 +819,18 @@ void Update(App* app)
         glBindBuffer(GL_UNIFORM_BUFFER, sceneObject.mesh.uniformBufferHandle);
         u8* bufferData = (u8*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
         u32 bufferHead = 0;
+        bufferHead = Align(bufferHead, app->uniformBlockAlignment);
+
+        sceneObject.localParamsOffset = bufferHead;
 
         memcpy(bufferData + bufferHead, glm::value_ptr(sceneObject.worldMatrix), sizeof(mat4x4));
         bufferHead += sizeof(mat4x4);
 
         memcpy(bufferData + bufferHead, glm::value_ptr(sceneObject.worldViewProjectionMatrix), sizeof(mat4x4));
         bufferHead += sizeof(mat4x4);
+
+        sceneObject.localParamsSize = bufferHead - sceneObject.localParamsOffset;
+
 
         glUnmapBuffer(GL_UNIFORM_BUFFER);
         

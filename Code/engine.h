@@ -123,6 +123,9 @@ struct SceneObject
     Mesh mesh;
     mat4x4 worldMatrix;
     mat4x4 worldViewProjectionMatrix;
+
+    u32 localParamsOffset;
+    u32 localParamsSize;
 };
 struct Material
 {
@@ -204,6 +207,7 @@ struct App
 
     int maxUniformBufferSize;
     int uniformBlockAlignment;
+    GLuint uniformBufferHandle;
 
 };
 
