@@ -759,6 +759,7 @@ void Gui(App* app)
                     SetScaling(scObj.worldMatrix, newScale.x, newScale.y, newScale.z);
                 }
 
+                ManageSceneObjectRotation(scObj);
 
                 //float newPositionY = scObj.worldMatrix.translation().y;
                 //float newPositionZ = scObj.worldMatrix.translation().z;
@@ -975,4 +976,22 @@ void Camera::SetValues()
     fov = 60.f;;
 
     CalculateViewMatrix();
+}
+
+
+void ManageSceneObjectRotation(SceneObject &scObj)
+{
+    vec3 newRot = vec3(scObj.rotationEuler[0], scObj.rotationEuler[1], scObj.rotationEuler[2]);
+
+    if (ImGui::DragFloat3("Rotation", &newRot[0], 0.05f, 0.0f, 0.0f, "%.2f"))
+    {
+        vec3 toRot = scObj.rotationEuler - newRot;
+        scObj.worldMatrix = glm::rotate(scObj.worldMatrix, glm::radians(toRot[0]), vec3(1, 0, 0));
+        scObj.worldMatrix = glm::rotate(scObj.worldMatrix, glm::radians(toRot[1]), vec3(0, 1, 0));
+        scObj.worldMatrix = glm::rotate(scObj.worldMatrix, glm::radians(toRot[2]), vec3(0, 1, 0));
+
+        scObj.rotationEuler = newRot;
+    }
+
+    
 }

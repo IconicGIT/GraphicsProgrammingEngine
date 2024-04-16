@@ -17,6 +17,7 @@ typedef glm::ivec2 ivec2;
 typedef glm::ivec3 ivec3;
 typedef glm::ivec4 ivec4;
 typedef glm::mat4x4 mat4x4;
+typedef glm::quat quat;
 
 const mat4x4 IdentityMatrix = mat4x4(
     1.0f, 0.0f, 0.0f, 0.0f,
@@ -123,6 +124,9 @@ struct SceneObject
     mat4x4 worldMatrix;
     mat4x4 worldViewProjectionMatrix;
 
+    vec3 rotationEuler;
+    quat rotationQuat;
+
     u32 localParamsOffset;
     u32 localParamsSize;
 };
@@ -218,7 +222,7 @@ struct VertexV3V2
 
 
 vec3 rotate(const vec3& vector, float degrees, const vec3& axis);
-
+void ManageSceneObjectRotation(SceneObject& scObj);
 
 void Init(App* app);
 

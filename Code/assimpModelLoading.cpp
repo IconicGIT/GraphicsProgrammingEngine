@@ -187,6 +187,8 @@ u32 LoadModel(App* app, const char* filename)
     u32 meshIdx = (u32)app->sceneObjects.size() - 1u;
     scObj.name = "Object " + std::to_string(meshIdx);
     scObj.worldMatrix = IdentityMatrix;
+    scObj.rotationEuler = vec3(0, 0, 0);
+    scObj.rotationQuat = quat(0, 0, 0, 1);
 
     app->models.push_back(Model{});
     Model& model = app->models.back();
