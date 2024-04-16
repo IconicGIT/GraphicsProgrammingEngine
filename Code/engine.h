@@ -117,6 +117,27 @@ struct Mesh
     
 };
 
+enum LightType
+{
+    DIRECTIONAL_LIGHT, POINT_LIGHT
+};
+
+struct Light
+{
+    LightType type;
+    vec3 color;
+    vec3 direction;
+    vec3 position;
+};
+
+
+struct LightObject
+{
+    std::string name;
+    u32 Idx;
+    Light light;
+};
+
 struct SceneObject
 {
     std::string name;
@@ -181,6 +202,7 @@ struct App
     std::vector<Model>          models;
     std::vector<Material>       materials;
     std::vector<SceneObject>    sceneObjects;
+    std::vector<LightObject>    lightObjects;
 
     // program indices
     u32 texturedGeometryProgramIdx;
@@ -211,6 +233,8 @@ struct App
     int maxUniformBufferSize;
     int uniformBlockAlignment;
     GLuint uniformBufferHandle;
+    u32 globalParamsOffset;
+    u32 globalParamsSize;
 
 };
 
@@ -220,7 +244,8 @@ struct VertexV3V2
     glm::vec2 uv;
 };
 
-
+u32 CreateLight(App* app, LightType type, vec3 position, vec3 direction, vec3 color);
+void SetLightUniforms(App* app);
 vec3 rotate(const vec3& vector, float degrees, const vec3& axis);
 void ManageSceneObjectRotation(SceneObject& scObj);
 

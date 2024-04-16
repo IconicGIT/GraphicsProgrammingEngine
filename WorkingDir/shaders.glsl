@@ -7,11 +7,16 @@
 
 // TODO: Write your vertex shader here
 
-layout(binding = 1, std140) uniform localParams
+
+struct Light
 {
-	mat4 uWorldMatrix;
-	mat4 uWorldViewProjectionMatrix;
+	unsigned int type;
+    vec3 color;
+    vec3 direction;
+    vec3 position;
 };
+
+
 
 layout(location = 0) in vec3 aPosition;	// world space
 layout(location = 1) in vec3 aNormal;	// world space
@@ -19,11 +24,25 @@ layout(location = 2) in vec2 aTexCoord;
 layout(location = 3) in vec3 aTangent;
 layout(location = 4) in vec3 aBitangent;
 
+layout (binding = 0, std140) uniform globalParams
+{
+	vec3			uCameraPosition;
+	unsigned int	uLightCount;
+	Light			uLight[16];
+};
+
+layout(binding = 1, std140) uniform localParams
+{
+	mat4 uWorldMatrix;
+	mat4 uWorldViewProjectionMatrix;
+};
+
 out vec2 vTexCoord;
 out vec3 vPosition;
 out vec3 vNormal;
 out vec3 vViewDir;
-
+out vec3 vLightDir;
+out vec3 vLightCol;
 
 
 void main()
@@ -31,7 +50,9 @@ void main()
 	vTexCoord = aTexCoord;
 	vPosition = vec3(uWorldMatrix * vec4(aPosition, 1.0));
 	vNormal =	vec3(uWorldMatrix * vec4(aNormal, 0.0));
-	//vViewDir = aViewDir;
+	vViewDir = uCameraPosition - vPosition;
+	vLightDir = normalize(uLight[0].direction);
+	vLightCol = uLight[0].color;
 
 	gl_Position = uWorldViewProjectionMatrix * vec4(aPosition, 1.0);
 }
@@ -44,6 +65,8 @@ in vec2 vTexCoord;
 in vec3 vPosition;
 in vec3 vNormal;
 in vec3 vViewDir;
+in vec3 vLightDir;
+in vec3 vLightCol;
 
 uniform sampler2D uTexture;
 
@@ -51,7 +74,12 @@ layout(location = 0) out vec4 oColor;
 
 void main()
 {
-	oColor = texture(uTexture, vTexCoord);
+	vec4 col = texture(uTexture, vTexCoord);
+
+	//float lightEff = dot(vNormal, vLightDir);
+	//vec3 col_ = mix(vec3(0), col.xyz, lightEff);
+	
+	oColor = vec4(vLightCol, 1);
 }
 
 #endif

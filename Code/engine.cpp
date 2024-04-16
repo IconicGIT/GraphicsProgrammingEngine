@@ -341,6 +341,69 @@ u32 Align(u32 value, u32 alignment)
     return (value + alignment - 1) & ~(alignment - 1);
 }
 
+u32 CreateLight(App* app, LightType type, vec3 position, vec3 direction, vec3 color)
+{
+    app->lightObjects.push_back(LightObject{});
+
+    LightObject &lo = app->lightObjects.back();
+
+    u32 lIdx = (u32)app->lightObjects.size() - 1u;
+
+    lo.name = "Light " + std::to_string(lIdx);
+
+    Light l = lo.light;
+    l.position = position;
+    
+    l.type = type;
+    l.direction = direction;
+    l.color = color;
+
+    lo.Idx;
+
+    return lo.Idx;
+}
+
+void SetLightUniforms(App* app)
+{
+    glBindBuffer(GL_UNIFORM_BUFFER, app->uniformBufferHandle);
+
+    u32 bufferHead = 0;
+    for (size_t i = 0; i < app->lightObjects.size(); i++)
+    {
+        Light& light = app->lightObjects[i].light;
+        
+        //opengl stuff
+        u8* bufferData = (u8*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
+        bufferHead = Align(bufferHead, app->uniformBlockAlignment);
+    
+        app->globalParamsOffset = bufferHead;
+        
+        //push type
+        memcpy(bufferData + bufferHead, &light.type, sizeof(unsigned int));
+        bufferHead += sizeof(unsigned int);
+    
+        //push color
+        memcpy(bufferData + bufferHead, &light.color, sizeof(vec3));
+        bufferHead += sizeof(vec3);
+
+        //push direction
+        memcpy(bufferData + bufferHead, &light.direction, sizeof(vec3));
+        bufferHead += sizeof(vec3);
+        
+        //push position
+        memcpy(bufferData + bufferHead, &light.position, sizeof(vec3));
+        bufferHead += sizeof(vec3);
+
+        app->globalParamsSize = bufferHead - app->globalParamsOffset;
+    
+    
+        glUnmapBuffer(GL_UNIFORM_BUFFER);
+    
+    }
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
+
+
 vec3 rotate(const vec3& vector, float degrees, const vec3& axis)
 {
     // Convert degrees to radians
@@ -367,6 +430,14 @@ void SetTranslation(mat4x4& M, float x, float y, float z)
     M[3].x = x;
     M[3].y = y;
     M[3].z = z;
+    //return(vec3(M[12], M[13], M[14]));
+}
+
+void SetTranslation(mat4x4& M, vec3 position)
+{
+    M[3].x = position.x;
+    M[3].y = position.y;
+    M[3].z = position.z;
     //return(vec3(M[12], M[13], M[14]));
 }
 
@@ -728,11 +799,20 @@ void Init(App* app)
 
     glEnable(GL_DEPTH_TEST);
 
+
+    //set uniform buffers
     glGenBuffers(1, &app->uniformBufferHandle);
     glBindBuffer(GL_UNIFORM_BUFFER, app->uniformBufferHandle);
     glBufferData(GL_UNIFORM_BUFFER, app->maxUniformBufferSize, NULL, GL_STREAM_DRAW);
 
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+    //load lights
+
+    CreateLight(app, DIRECTIONAL_LIGHT, vec3(0, 2, 0), vec3(1), vec3(1));
+
+    //set light info
+    SetLightUniforms(app);
 }
 
 void Gui(App* app)
@@ -802,7 +882,7 @@ void Update(App* app)
             program.lastWriteTimestamp = currentTimestamp;
         }
     }
-    u32 bufferHead = 0;
+    u32 bufferHead = app->globalParamsSize;
 
     for (size_t i = 0; i < app->sceneObjects.size(); i++)
     {
@@ -895,7 +975,7 @@ void Render(App* app)
 
         case Mode_TexturedMeshes:
         {
-            ErrorGuardOGL error("Render() [Mode_TexturedMeshes]", __FILE__, __LINE__);
+            //ErrorGuardOGL error("Render() [Mode_TexturedMeshes]", __FILE__, __LINE__);
 
             // - clear the framebuffer
             glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -912,6 +992,20 @@ void Render(App* app)
             Program& texturedMeshProgram = app ->programs[app->texturedGeometryProgramIdx];
             glUseProgram(texturedMeshProgram.handle);
 
+
+            if (app->lightObjects.size() > 0)
+                for (size_t i = 0; i < app->lightObjects.size(); i++)
+                {
+                    ErrorGuardOGL error("aaaa", __FILE__, __LINE__);
+                    std::string groupName = "Light" + std::to_string(app->lightObjects[i].Idx);
+                    glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 1, -1, groupName.c_str());
+
+                    glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->uniformBufferHandle, app->globalParamsOffset, app->globalParamsSize);
+
+                    glPopDebugGroup();
+
+                }
+
             if (app->models.size() > 0)
             for (size_t m = 0; m < app->models.size(); m++)
             {
@@ -919,14 +1013,10 @@ void Render(App* app)
                 SceneObject& scObj = app->sceneObjects[model.meshIdx];
                 Mesh& mesh = scObj.mesh;
 
-                //uniform buffer data
-                u32 blockOffset = 0;
-                u32 blockSize = sizeof(mat4x4) * 2;
-
                 for (u32 i = 0; i < mesh.submeshes.size(); ++i)
                 {
-
-                    //glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 1, -1, "Patrick");
+                    std::string groupName = "Object" + std::to_string(model.meshIdx);
+                    glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 1, -1, groupName.c_str());
 
                     //use uniform buffer
                     glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->uniformBufferHandle, scObj.localParamsOffset, scObj.localParamsSize);
@@ -947,7 +1037,7 @@ void Render(App* app)
                     Submesh& submesh = mesh.submeshes[i];
                     glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
 
-                    //glPopDebugGroup();
+                    glPopDebugGroup();
                 }
                 //std::cout << "Next Render call --------------------------------------------------------------------" << std::endl;
             }
