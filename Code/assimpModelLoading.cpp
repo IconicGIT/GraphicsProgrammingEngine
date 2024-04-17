@@ -162,7 +162,7 @@ void ProcessAssimpNode(const aiScene* scene, aiNode* node, Mesh* myMesh, u32 bas
     }
 }
 
-u32 LoadModel(App* app, const char* filename)
+u32 LoadModel(App* app, const char* filename, vec3 position)
 {
 
     const aiScene* scene = aiImportFile(filename,
@@ -187,6 +187,10 @@ u32 LoadModel(App* app, const char* filename)
     u32 meshIdx = (u32)app->sceneObjects.size() - 1u;
     scObj.name = "Object " + std::to_string(meshIdx);
     scObj.worldMatrix = IdentityMatrix;
+    scObj.worldMatrix[3].x = position.x;
+    scObj.worldMatrix[3].y = position.y;
+    scObj.worldMatrix[3].z = position.z;
+
     scObj.rotationEuler = vec3(0, 0, 0);
     scObj.rotationQuat = quat(0, 0, 0, 1);
 

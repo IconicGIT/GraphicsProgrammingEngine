@@ -590,7 +590,7 @@ void Init(App* app)
 
 
     // load models
-    LoadModel(app, "Models/Patrick/Patrick.obj");
+    LoadModel(app, "Models/Patrick/Patrick.obj", vec3(0,0,3));
     LoadModel(app, "Models/Patrick/Patrick.obj");
 
     
