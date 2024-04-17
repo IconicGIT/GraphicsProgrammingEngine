@@ -36,6 +36,7 @@ struct Image
 
 struct Texture
 {
+    Image       image;
     GLuint      handle;
     std::string filepath;
 };

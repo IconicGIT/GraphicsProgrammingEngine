@@ -170,6 +170,7 @@ u32 LoadTexture2D(App* app, const char* filepath)
         Texture tex = {};
         tex.handle = CreateTexture2DFromImage(image);
         tex.filepath = filepath;
+        tex.image = image;
 
         u32 texIdx = app->textures.size();
         app->textures.push_back(tex);
@@ -804,11 +805,33 @@ void Init(App* app)
     SetLightUniforms(app);
 }
 
+float imageSize = 30;
+
 void Gui(App* app)
 {
     ImGui::Begin("Info");
     ImGui::Text("FPS: %f", 1.0f/app->deltaTime);
     
+    ImGui::Text("Loaded Textures");
+
+    if (ImGui::TreeNode("Textures"))
+    {
+        ImGui::DragFloat("Image Size", &imageSize, 0.1, 10, 100, "%.2f");
+        if (app->textures.size() > 0)
+            for (size_t i = 0; i < app->textures.size(); i++)
+            {
+                ImGui::Separator();
+                Texture& t = app->textures[i];
+
+                ImVec2 size = ImVec2(imageSize / t.image.size.x, imageSize / t.image.size.x);
+
+                ImGui::Image((void*)t.handle, ImVec2(t.image.size.x * size.x, t.image.size.y * size.y));
+                ImGui::SameLine();
+                ImGui::Text(t.filepath.c_str());
+            }
+        ImGui::TreePop();
+    }
+    ImGui::Separator();
 
     ImGui::Text("Scene lights");
     ImGui::Separator();
