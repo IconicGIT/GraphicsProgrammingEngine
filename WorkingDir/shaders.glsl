@@ -60,7 +60,7 @@ void main()
 
 	if (uLight[0].type == 2)
 	{
-		vLightDir = normalize(aPosition - uLight[0].position);
+		vLightDir = normalize(uLight[0].position - vPosition);
 	}
 
 	gl_Position = uWorldViewProjectionMatrix * vec4(aPosition, 1.0);
