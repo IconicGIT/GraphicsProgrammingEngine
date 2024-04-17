@@ -336,11 +336,6 @@ GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program)
 //    return glm::scale(scaling);
 //}
 
-u32 Align(u32 value, u32 alignment)
-{
-    return (value + alignment - 1) & ~(alignment - 1);
-}
-
 u32 CreateLight(App* app, LightType type, vec3 position, vec3 direction, vec3 color)
 {
     app->lightObjects.push_back(LightObject{});
@@ -351,7 +346,7 @@ u32 CreateLight(App* app, LightType type, vec3 position, vec3 direction, vec3 co
 
     lo.name = "Light " + std::to_string(lIdx);
 
-    Light l = lo.light;
+    Light &l = lo.light;
     l.position = position;
     
     l.type = type;
@@ -365,42 +360,33 @@ u32 CreateLight(App* app, LightType type, vec3 position, vec3 direction, vec3 co
 
 void SetLightUniforms(App* app)
 {
-    glBindBuffer(GL_UNIFORM_BUFFER, app->uniformBufferHandle);
 
-    u32 bufferHead = 0;
+    MapBuffer(app->uniformBuffer, GL_WRITE_ONLY);
+
+    app->globalParamsOffset = app->uniformBuffer.head;
+
+    //push camera position
+    PushVec3(app->uniformBuffer, app->camera.Position);
+
+    //push light count
+    PushUInt(app->uniformBuffer, app->lightObjects.size());
+
+    if (app->lightObjects.size() > 0);
     for (size_t i = 0; i < app->lightObjects.size(); i++)
     {
+        AlignHead(app->uniformBuffer, sizeof(vec4));
+
         Light& light = app->lightObjects[i].light;
         
-        //opengl stuff
-        u8* bufferData = (u8*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
-        bufferHead = Align(bufferHead, app->uniformBlockAlignment);
-    
-        app->globalParamsOffset = bufferHead;
-        
-        //push type
-        memcpy(bufferData + bufferHead, &light.type, sizeof(unsigned int));
-        bufferHead += sizeof(unsigned int);
-    
-        //push color
-        memcpy(bufferData + bufferHead, &light.color, sizeof(vec3));
-        bufferHead += sizeof(vec3);
-
-        //push direction
-        memcpy(bufferData + bufferHead, &light.direction, sizeof(vec3));
-        bufferHead += sizeof(vec3);
-        
-        //push position
-        memcpy(bufferData + bufferHead, &light.position, sizeof(vec3));
-        bufferHead += sizeof(vec3);
-
-        app->globalParamsSize = bufferHead - app->globalParamsOffset;
-    
-    
-        glUnmapBuffer(GL_UNIFORM_BUFFER);
-    
+        PushUInt(app->uniformBuffer, light.type);
+        PushVec3(app->uniformBuffer, light.color);
+        PushVec3(app->uniformBuffer, light.direction);
+        PushVec3(app->uniformBuffer, light.position);
     }
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+    app->globalParamsSize = app->uniformBuffer.head - app->globalParamsOffset;
+
+    UnmapBuffer(app->uniformBuffer);
 }
 
 
@@ -801,15 +787,18 @@ void Init(App* app)
 
 
     //set uniform buffers
-    glGenBuffers(1, &app->uniformBufferHandle);
-    glBindBuffer(GL_UNIFORM_BUFFER, app->uniformBufferHandle);
-    glBufferData(GL_UNIFORM_BUFFER, app->maxUniformBufferSize, NULL, GL_STREAM_DRAW);
+    //glGenBuffers(1, &app->uniformBufferHandle);
+    //glBindBuffer(GL_UNIFORM_BUFFER, app->uniformBufferHandle);
+    //glBufferData(GL_UNIFORM_BUFFER, app->maxUniformBufferSize, NULL, GL_STREAM_DRAW);
+    app->uniformBuffer = CreateUniformBuffer(app->maxUniformBufferSize);
+
 
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     //load lights
 
-    CreateLight(app, DIRECTIONAL_LIGHT, vec3(0, 2, 0), vec3(1), vec3(1));
+    //CreateLight(app, DIRECTIONAL_LIGHT, vec3(0, 2, 0), vec3(1), vec3(1));
+    CreateLight(app, POINT_LIGHT, vec3(0, 2, 0), vec3(1), vec3(1));
 
     //set light info
     SetLightUniforms(app);
@@ -820,6 +809,28 @@ void Gui(App* app)
     ImGui::Begin("Info");
     ImGui::Text("FPS: %f", 1.0f/app->deltaTime);
     
+
+    ImGui::Text("Scene lights");
+    ImGui::Separator();
+
+    if (app->lightObjects.size() > 0)
+        for (size_t i = 0; i < app->lightObjects.size(); i++)
+        {
+            LightObject& scObj = app->lightObjects[i];
+            std::string scObjName = scObj.name + "##" + std::to_string(i);
+
+            if (ImGui::TreeNode(scObjName.c_str()))
+            {
+                if (scObj.light.type == DIRECTIONAL_LIGHT)
+                    ImGui::DragFloat3("Direction", &scObj.light.position[0], 0.05f, 0.0f, 0.0f, "%.2f");
+
+                if (scObj.light.type == POINT_LIGHT)
+                    ImGui::DragFloat3("Position", &scObj.light.position[0], 0.05f, 0.0f, 0.0f, "%.2f");
+                ImGui::TreePop();
+            }
+        }
+    ImGui::Separator();
+
     ImGui::Text("Scene Objects");
     ImGui::Separator();
     if (app->sceneObjects.size() > 0)
@@ -882,42 +893,96 @@ void Update(App* app)
             program.lastWriteTimestamp = currentTimestamp;
         }
     }
-    u32 bufferHead = app->globalParamsSize;
+    
 
-    for (size_t i = 0; i < app->sceneObjects.size(); i++)
+    MapBuffer(app->uniformBuffer, GL_WRITE_ONLY);
+
+    // update global params
+    app->globalParamsOffset = app->uniformBuffer.head;
+
+    //push camera position
+    PushVec3(app->uniformBuffer, app->camera.Position);
+
+    //push light count
+    PushUInt(app->uniformBuffer, app->lightObjects.size());
+
+    if (app->lightObjects.size() > 0);
+    for (size_t i = 0; i < app->lightObjects.size(); i++)
     {
-        SceneObject &sceneObject = app->sceneObjects[i];
+        AlignHead(app->uniformBuffer, sizeof(vec4));
 
-        //update transform
-        float aspectRatio = (float)app->displaySize.x / (float)app->displaySize.y;
-        mat4x4 projectionMatrix = glm::perspective(glm::radians(app->camera.fov), aspectRatio, app->camera.zNear, app->camera.zFar);
-        mat4x4 view = glm::lookAt(app->camera.Position, app->camera.currentReference, vec3(0, 1, 0));
+        Light& light = app->lightObjects[i].light;
 
-        //update transform and view matrices
-        //sceneObject.worldMatrix = IdentityMatrix; --> only when setting the mesh/object;
-        sceneObject.worldViewProjectionMatrix = projectionMatrix * view * sceneObject.worldMatrix;
-
-        //opengl stuff
-        glBindBuffer(GL_UNIFORM_BUFFER, app->uniformBufferHandle);
-        u8* bufferData = (u8*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
-        bufferHead = Align(bufferHead, app->uniformBlockAlignment);
-
-        sceneObject.localParamsOffset = bufferHead;
-
-        memcpy(bufferData + bufferHead, glm::value_ptr(sceneObject.worldMatrix), sizeof(mat4x4));
-        bufferHead += sizeof(mat4x4);
-
-        memcpy(bufferData + bufferHead, glm::value_ptr(sceneObject.worldViewProjectionMatrix), sizeof(mat4x4));
-        bufferHead += sizeof(mat4x4);
-
-        sceneObject.localParamsSize = bufferHead - sceneObject.localParamsOffset;
-
-
-        glUnmapBuffer(GL_UNIFORM_BUFFER);
-        
-
+        PushUInt(app->uniformBuffer, light.type);
+        PushVec3(app->uniformBuffer, light.color);
+        PushVec3(app->uniformBuffer, light.direction);
+        PushVec3(app->uniformBuffer, light.position);
     }
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+    app->globalParamsSize = app->uniformBuffer.head - app->globalParamsOffset;
+
+
+    // update local params
+    if (app->sceneObjects.size() > 0)
+        for (size_t i = 0; i < app->sceneObjects.size(); i++)
+        {
+            SceneObject& sceneObject = app->sceneObjects[i];
+            // update transform
+                float aspectRatio = (float)app->displaySize.x / (float)app->displaySize.y;
+                mat4x4 projectionMatrix = glm::perspective(glm::radians(app->camera.fov), aspectRatio, app->camera.zNear, app->camera.zFar);
+                mat4x4 view = glm::lookAt(app->camera.Position, app->camera.currentReference, vec3(0, 1, 0));
+            
+                //update transform and view matrices
+                //sceneObject.worldMatrix = IdentityMatrix; --> only when setting the mesh/object;
+                mat4x4 worldMat = sceneObject.worldMatrix;
+                mat4x4 viewMat = sceneObject.worldViewProjectionMatrix = projectionMatrix * view * sceneObject.worldMatrix;
+
+                AlignHead(app->uniformBuffer, app->uniformBlockAlignment);
+
+                sceneObject.localParamsOffset = app->uniformBuffer.head;
+                PushMat4(app->uniformBuffer, worldMat);
+                PushMat4(app->uniformBuffer, viewMat);
+                sceneObject.localParamsSize = app->uniformBuffer.head - sceneObject.localParamsOffset;
+        }
+
+    UnmapBuffer(app->uniformBuffer);
+
+    //u32 bufferHead = app->globalParamsSize;
+    //
+    //for (size_t i = 0; i < app->sceneObjects.size(); i++)
+    //{
+    //    SceneObject &sceneObject = app->sceneObjects[i];
+    //
+    //    //update transform
+    //    float aspectRatio = (float)app->displaySize.x / (float)app->displaySize.y;
+    //    mat4x4 projectionMatrix = glm::perspective(glm::radians(app->camera.fov), aspectRatio, app->camera.zNear, app->camera.zFar);
+    //    mat4x4 view = glm::lookAt(app->camera.Position, app->camera.currentReference, vec3(0, 1, 0));
+    //
+    //    //update transform and view matrices
+    //    //sceneObject.worldMatrix = IdentityMatrix; --> only when setting the mesh/object;
+    //    sceneObject.worldViewProjectionMatrix = projectionMatrix * view * sceneObject.worldMatrix;
+    //
+    //    //opengl stuff
+    //    glBindBuffer(GL_UNIFORM_BUFFER, app->uniformBuffer.handle);
+    //    u8* bufferData = (u8*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
+    //    bufferHead = Align(bufferHead, app->uniformBlockAlignment);
+    //
+    //    sceneObject.localParamsOffset = bufferHead;
+    //
+    //    memcpy(bufferData + bufferHead, glm::value_ptr(sceneObject.worldMatrix), sizeof(mat4x4));
+    //    bufferHead += sizeof(mat4x4);
+    //
+    //    memcpy(bufferData + bufferHead, glm::value_ptr(sceneObject.worldViewProjectionMatrix), sizeof(mat4x4));
+    //    bufferHead += sizeof(mat4x4);
+    //
+    //    sceneObject.localParamsSize = bufferHead - sceneObject.localParamsOffset;
+    //
+    //
+    //    glUnmapBuffer(GL_UNIFORM_BUFFER);
+    //    
+    //
+    //}
+    //glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void Render(App* app)
@@ -1000,7 +1065,7 @@ void Render(App* app)
                     std::string groupName = "Light" + std::to_string(app->lightObjects[i].Idx);
                     glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 1, -1, groupName.c_str());
 
-                    glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->uniformBufferHandle, app->globalParamsOffset, app->globalParamsSize);
+                    glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->uniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
 
                     glPopDebugGroup();
 
@@ -1019,7 +1084,7 @@ void Render(App* app)
                     glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 1, -1, groupName.c_str());
 
                     //use uniform buffer
-                    glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->uniformBufferHandle, scObj.localParamsOffset, scObj.localParamsSize);
+                    glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->uniformBuffer.handle, scObj.localParamsOffset, scObj.localParamsSize);
 
                     GLuint vao = FindVAO(mesh, i, texturedMeshProgram);
                     glBindVertexArray(vao);

@@ -51,8 +51,17 @@ void main()
 	vPosition = vec3(uWorldMatrix * vec4(aPosition, 1.0));
 	vNormal =	vec3(uWorldMatrix * vec4(aNormal, 0.0));
 	vViewDir = uCameraPosition - vPosition;
-	vLightDir = normalize(uLight[0].direction);
 	vLightCol = uLight[0].color;
+
+	if (uLight[0].type == 1)
+	{
+		vLightDir = normalize(uLight[0].direction);
+	}
+
+	if (uLight[0].type == 2)
+	{
+		vLightDir = normalize(aPosition - uLight[0].position);
+	}
 
 	gl_Position = uWorldViewProjectionMatrix * vec4(aPosition, 1.0);
 }
@@ -76,10 +85,11 @@ void main()
 {
 	vec4 col = texture(uTexture, vTexCoord);
 
+
 	float lightEff = dot(vNormal, vLightDir);
 	vec3 col_ = mix(vec3(0), col.xyz, lightEff);
 	
-	oColor = vec4(vLightCol, 1);
+	oColor = vec4(col_, 1);
 }
 
 #endif

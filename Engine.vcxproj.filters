@@ -19,6 +19,9 @@
     <Filter Include="Assimp">
       <UniqueIdentifier>{0510aa99-68f7-4fe5-80be-8616eb577001}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Helpers">
+      <UniqueIdentifier>{d7909c35-964e-4ce3-886f-706501b48d97}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ThirdParty\imgui-docking\imgui.cpp">
@@ -56,6 +59,9 @@
     </ClCompile>
     <ClCompile Include="Code\assimpModelLoading.cpp">
       <Filter>Assimp</Filter>
+    </ClCompile>
+    <ClCompile Include="Code\BufferManagement.cpp">
+      <Filter>Helpers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -100,6 +106,9 @@
     </ClInclude>
     <ClInclude Include="Code\assimpModelLoading.h">
       <Filter>Assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="Code\BufferManagement.h">
+      <Filter>Helpers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

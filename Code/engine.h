@@ -6,6 +6,7 @@
 
 #include "platform.h"
 #include <glad/glad.h>
+#include "BufferManagement.h"
 
 
 #define BINDING(b) b
@@ -119,7 +120,8 @@ struct Mesh
 
 enum LightType
 {
-    DIRECTIONAL_LIGHT, POINT_LIGHT
+    DIRECTIONAL_LIGHT = 1,
+    POINT_LIGHT = 2,
 };
 
 struct Light
@@ -232,7 +234,7 @@ struct App
 
     int maxUniformBufferSize;
     int uniformBlockAlignment;
-    GLuint uniformBufferHandle;
+    Buffer uniformBuffer;
     u32 globalParamsOffset;
     u32 globalParamsSize;
 
