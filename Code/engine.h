@@ -139,12 +139,17 @@ struct LightObject
     std::string name;
     u32 Idx;
     Light light;
+    Mesh mesh;
+
+    mat4x4 worldMatrix;
+    mat4x4 worldViewProjectionMatrix;
 };
 
 struct SceneObject
 {
     std::string name;
     Mesh mesh;
+    u32 modelIdx;
     mat4x4 worldMatrix;
     mat4x4 worldViewProjectionMatrix;
 
@@ -207,8 +212,13 @@ struct App
     std::vector<SceneObject>    sceneObjects;
     std::vector<LightObject>    lightObjects;
 
+    //premade models
+    Model m_quad;
+
+
     // program indices
     u32 texturedGeometryProgramIdx;
+    u32 lightIconsProgramIdx;
     
     // texture indices
     u32 diceTexIdx;
@@ -248,7 +258,7 @@ struct VertexV3V2
 };
 
 u32 CreateLight(App* app, LightType type, vec3 position, vec3 direction, vec3 color);
-void SetLightUniforms(App* app);
+void SetLights(App* app);
 vec3 rotate(const vec3& vector, float degrees, const vec3& axis);
 void ManageSceneObjectRotation(SceneObject& scObj);
 

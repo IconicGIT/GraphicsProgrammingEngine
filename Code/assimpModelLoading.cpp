@@ -198,6 +198,7 @@ u32 LoadModel(App* app, const char* filename, vec3 position)
     Model& model = app->models.back();
     model.meshIdx = meshIdx;
     u32 modelIdx = (u32)app->models.size() - 1u;
+    scObj.modelIdx = modelIdx;
 
     String directory = GetDirectoryPart(MakeString(filename));
 

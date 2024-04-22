@@ -359,9 +359,9 @@ u32 CreateLight(App* app, LightType type, vec3 position, vec3 direction, vec3 co
     return lo.Idx;
 }
 
-void SetLightUniforms(App* app)
+void SetLights(App* app)
 {
-
+    //set uniforms
     MapBuffer(app->uniformBuffer, GL_WRITE_ONLY);
 
     app->globalParamsOffset = app->uniformBuffer.head;
@@ -388,6 +388,34 @@ void SetLightUniforms(App* app)
     app->globalParamsSize = app->uniformBuffer.head - app->globalParamsOffset;
 
     UnmapBuffer(app->uniformBuffer);
+
+    //set mesh
+
+    //    {glm::vec3(-0.5, -0.5, 0.0), glm::vec2(0,0)}, // bottom left
+    //    {glm::vec3( 0.5, -0.5, 0.0), glm::vec2(1,0)}, // bottom right
+    //    {glm::vec3( 0.5,  0.5, 0.0), glm::vec2(1,1)}, // top right
+    //    {glm::vec3(-0.5,  0.5, 0.0), glm::vec2(0,1)}, // top left
+
+    float quadV[] =
+    {
+        // vertices             tex coords
+        -0.5f, -0.5f, 0.0f,     0, 0,
+         0.5f, -0.5f, 0.0f,     1, 0,
+         0.5f,  0.5f, 0.0f,     1, 1,
+        -0.5f,  0.5f, 0.0f,     0, 1
+    };
+
+    int quadI[] =
+    {
+        0,1,2,
+        0,2,3
+    };
+
+    
+
+
+    
+
 }
 
 
@@ -589,9 +617,7 @@ void Init(App* app)
     app->camera.SetValues();
 
 
-    // load models
-    LoadModel(app, "Models/Patrick/Patrick.obj", vec3(0,0,3));
-    LoadModel(app, "Models/Patrick/Patrick.obj");
+   
 
     
     {
@@ -663,7 +689,7 @@ void Init(App* app)
         //format and order of the vertex in vertex shader
         VertexBufferLayout vertexBufferLayout;
         vertexBufferLayout.attributes.push_back(VertexBufferAttribute{ 0, 3, 0 }); // 0: location, 3: components (3 floats per position), 0: offset
-        vertexBufferLayout.attributes.push_back(VertexBufferAttribute{ 1, 2, 3 * sizeof(float) }); // 0: location, 3: components (2 floats per texture coord), 0: offset (from start to this location, 3 floats come before this)
+        vertexBufferLayout.attributes.push_back(VertexBufferAttribute{ 1, 2, 3 * sizeof(float) }); // 1: location, 3: components (2 floats per texture coord), 0: offset (from start to this location, 3 floats come before this)
         vertexBufferLayout.stride = 5 * sizeof(float); //3 for position + 2 for tex coords
 
         //build submesh
@@ -674,9 +700,14 @@ void Init(App* app)
 
         Mesh m_quad;
         m_quad.submeshes.push_back(submesh);
+        
 
         Model mod_quad;
         mod_quad.meshIdx = 0;
+        //mod_quad.
+
+        //app->m_quad = mod_quad;
+
 
         //glGenBuffers(1, &app->embeddedVertices);
         //glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
@@ -702,13 +733,16 @@ void Init(App* app)
 
     }
 
-    
+    // load models
+    LoadModel(app, "Models/Patrick/Patrick.obj", vec3(0, 0, 3));
+    LoadModel(app, "Models/Patrick/Patrick.obj");
     
 
 
 
     // - programs (and retrieve uniform indices)
     app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "TEXTURED_GEOMETRY");
+    app->lightIconsProgramIdx = LoadProgram(app, "shaders.glsl", "LIGHT_ICONS");
     Program& texturedGeometryProgram = app->programs[app->texturedGeometryProgramIdx];
 
 
@@ -802,7 +836,7 @@ void Init(App* app)
     CreateLight(app, POINT_LIGHT, vec3(0, 2, 0), vec3(1), vec3(1));
 
     //set light info
-    SetLightUniforms(app);
+    SetLights(app);
 }
 
 float imageSize = 30;
@@ -840,7 +874,14 @@ void Gui(App* app)
         for (size_t i = 0; i < app->lightObjects.size(); i++)
         {
             LightObject& scObj = app->lightObjects[i];
-            std::string scObjName = scObj.name + "##" + std::to_string(i);
+
+            std::string lType = "";
+            if (scObj.light.type == 1)
+                lType = "(Directional)";
+            if (scObj.light.type == 2)
+                lType = "(Point)";
+
+            std::string scObjName = scObj.name + " " + lType + "##" + std::to_string(i);
 
             if (ImGui::TreeNode(scObjName.c_str()))
             {
@@ -1076,16 +1117,43 @@ void Render(App* app)
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+            //use light icons shader
+            Program& currentProgram = app ->programs[app->lightIconsProgramIdx];
+            glUseProgram(currentProgram.handle);
 
-            Program& texturedMeshProgram = app ->programs[app->texturedGeometryProgramIdx];
-            glUseProgram(texturedMeshProgram.handle);
+            //if (app->lightObjects.size() > 0)
+            //    for (size_t i = 0; i < app->lightObjects.size(); i++)
+            //    {
+            //        ErrorGuardOGL error("aaaa", __FILE__, __LINE__);
+            //        std::string groupName = "Light mesh" + std::to_string(app->lightObjects[i].Idx);
+            //        glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 1, -1, groupName.c_str());
+            //
+            //        glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->uniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
+            //
+            //        glPopDebugGroup();
+            //
+            //    }
+            
 
+            //use mesh textured shader
+            currentProgram = app->programs[app->texturedGeometryProgramIdx];
+            glUseProgram(currentProgram.handle);
 
+            //load global uniforms
             if (app->lightObjects.size() > 0)
                 for (size_t i = 0; i < app->lightObjects.size(); i++)
                 {
+                    LightObject& lo = app->lightObjects[i];
                     ErrorGuardOGL error("aaaa", __FILE__, __LINE__);
-                    std::string groupName = "Light" + std::to_string(app->lightObjects[i].Idx);
+
+                    std::string lType = "";
+
+                    if (lo.light.type == 1) 
+                        lType = "(Directional)";
+                    if (lo.light.type == 2) 
+                        lType = "(Point)";
+
+                    std::string groupName = "Light" + std::to_string(lo.Idx) + " " + lType;
                     glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 1, -1, groupName.c_str());
 
                     glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->uniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
@@ -1094,11 +1162,13 @@ void Render(App* app)
 
                 }
 
-            if (app->models.size() > 0)
-            for (size_t m = 0; m < app->models.size(); m++)
+            //draw meshes
+            if (app->sceneObjects.size() > 0)
+            for (size_t m = 0; m < app->sceneObjects.size(); m++)
             {
-                Model& model = app->models[m]; //app->model does not exist
-                SceneObject& scObj = app->sceneObjects[model.meshIdx];
+                SceneObject& scObj = app->sceneObjects[m];
+
+                Model& model = app->models[scObj.modelIdx]; //app->model does not exist
                 Mesh& mesh = scObj.mesh;
 
                 for (u32 i = 0; i < mesh.submeshes.size(); ++i)
@@ -1109,7 +1179,7 @@ void Render(App* app)
                     //use uniform buffer
                     glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(1), app->uniformBuffer.handle, scObj.localParamsOffset, scObj.localParamsSize);
 
-                    GLuint vao = FindVAO(mesh, i, texturedMeshProgram);
+                    GLuint vao = FindVAO(mesh, i, currentProgram);
                     glBindVertexArray(vao);
 
                     u32 submeshMaterialldx = model.materialIdx[i];
