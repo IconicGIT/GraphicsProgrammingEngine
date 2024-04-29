@@ -359,64 +359,6 @@ u32 CreateLight(App* app, LightType type, vec3 position, vec3 direction, vec3 co
     return lo.Idx;
 }
 
-void SetLights(App* app)
-{
-    //set uniforms
-    MapBuffer(app->uniformBuffer, GL_WRITE_ONLY);
-
-    app->globalParamsOffset = app->uniformBuffer.head;
-
-    //push camera position
-    PushVec3(app->uniformBuffer, app->camera.Position);
-
-    //push light count
-    PushUInt(app->uniformBuffer, app->lightObjects.size());
-
-    if (app->lightObjects.size() > 0);
-    for (size_t i = 0; i < app->lightObjects.size(); i++)
-    {
-        AlignHead(app->uniformBuffer, sizeof(vec4));
-
-        Light& light = app->lightObjects[i].light;
-        
-        PushUInt(app->uniformBuffer, light.type);
-        PushVec3(app->uniformBuffer, light.color);
-        PushVec3(app->uniformBuffer, light.direction);
-        PushVec3(app->uniformBuffer, light.position);
-    }
-
-    app->globalParamsSize = app->uniformBuffer.head - app->globalParamsOffset;
-
-    UnmapBuffer(app->uniformBuffer);
-
-    //set mesh
-
-    //    {glm::vec3(-0.5, -0.5, 0.0), glm::vec2(0,0)}, // bottom left
-    //    {glm::vec3( 0.5, -0.5, 0.0), glm::vec2(1,0)}, // bottom right
-    //    {glm::vec3( 0.5,  0.5, 0.0), glm::vec2(1,1)}, // top right
-    //    {glm::vec3(-0.5,  0.5, 0.0), glm::vec2(0,1)}, // top left
-
-    float quadV[] =
-    {
-        // vertices             tex coords
-        -0.5f, -0.5f, 0.0f,     0, 0,
-         0.5f, -0.5f, 0.0f,     1, 0,
-         0.5f,  0.5f, 0.0f,     1, 1,
-        -0.5f,  0.5f, 0.0f,     0, 1
-    };
-
-    int quadI[] =
-    {
-        0,1,2,
-        0,2,3
-    };
-
-    
-
-
-    
-
-}
 
 
 vec3 rotate(const vec3& vector, float degrees, const vec3& axis)
@@ -733,9 +675,7 @@ void Init(App* app)
 
     }
 
-    // load models
-    LoadModel(app, "Models/Patrick/Patrick.obj", vec3(0, 0, 3));
-    LoadModel(app, "Models/Patrick/Patrick.obj");
+
     
 
 
@@ -830,13 +770,17 @@ void Init(App* app)
 
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
+    // load models
+    LoadModel(app, "Models/Patrick/Patrick.obj", vec3(0, 0, 3));
+    LoadModel(app, "Models/Patrick/Patrick.obj", vec3(0, 0, -3));
+
     //load lights
 
     CreateLight(app, DIRECTIONAL_LIGHT, vec3(0, 2, 0), vec3(1), vec3(1));
-    CreateLight(app, POINT_LIGHT, vec3(0, 2, 0), vec3(1), vec3(1));
+    CreateLight(app, POINT_LIGHT, vec3(0, 2, -3), vec3(1), vec3(1));
+    CreateLight(app, POINT_LIGHT, vec3(0, 2, 3), vec3(1), vec3(1));
 
     //set light info
-    SetLights(app);
 
 
 
@@ -1194,9 +1138,18 @@ void Render(App* app)
             //    }
             
 
-            //use mesh textured shader
+            ////use mesh textured shader
             currentProgram = app->programs[app->texturedGeometryProgramIdx];
             glUseProgram(currentProgram.handle);
+
+
+            //glBindFramebuffer(GL_FRAMEBUFFER, app->colorAttachmentHandle);
+            //
+            //GLuint drawBuffers[] = { app->colorAttachmentHandle };
+            //glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);
+
+
+
 
             //load global uniforms
             if (app->lightObjects.size() > 0)

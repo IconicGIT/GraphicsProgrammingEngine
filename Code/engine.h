@@ -264,7 +264,6 @@ struct VertexV3V2
 };
 
 u32 CreateLight(App* app, LightType type, vec3 position, vec3 direction, vec3 color);
-void SetLights(App* app);
 vec3 rotate(const vec3& vector, float degrees, const vec3& axis);
 void ManageSceneObjectRotation(SceneObject& scObj);
 
