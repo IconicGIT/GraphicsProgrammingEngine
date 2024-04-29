@@ -101,15 +101,35 @@ void main()
 // The third parameter of the LoadProgram function in engine.cpp allows
 // chosing the shader you want to load by name.
 
-#ifdef LIGHT_ICONS
+#ifdef TEXTURED_GEOMETRY2
 
 #if defined(VERTEX) ///////////////////////////////////////////////////
 
 // TODO: Write your vertex shader here
 
+
+struct Light
+{
+	unsigned int type;
+    vec3 color;
+    vec3 direction;
+    vec3 position;
+};
+
+
+
 layout(location = 0) in vec3 aPosition;	// world space
 layout(location = 1) in vec3 aNormal;	// world space
 layout(location = 2) in vec2 aTexCoord;
+layout(location = 3) in vec3 aTangent;
+layout(location = 4) in vec3 aBitangent;
+
+layout (binding = 0, std140) uniform globalParams
+{
+	vec3			uCameraPosition;
+	unsigned int	uLightCount;
+	Light			uLight[16];
+};
 
 layout(binding = 1, std140) uniform localParams
 {
@@ -119,12 +139,38 @@ layout(binding = 1, std140) uniform localParams
 
 out vec2 vTexCoord;
 out vec3 vPosition;
+out vec3 vNormal;
+out vec3 vViewDir;
+flat out unsigned int vLightCount;
+out vec3 vLightDir[16];
+out vec3 vLightCol[16];
 
 
 void main()
 {
 	vTexCoord = aTexCoord;
 	vPosition = vec3(uWorldMatrix * vec4(aPosition, 1.0));
+	vNormal =	vec3(uWorldMatrix * vec4(aNormal, 0.0));
+	vViewDir = uCameraPosition - vPosition;
+	vLightCount = uLightCount;
+
+	if (uLightCount > 0)
+	for	(unsigned int i = 0; i < uLightCount; i++)
+	{
+		if (uLight[i].type == 1)
+		{
+			vLightDir[i] = normalize(uLight[i].direction);
+		}
+
+		if (uLight[i].type == 2)
+		{
+			vLightDir[i] = normalize(uLight[i].position - vPosition);
+		}
+		//vLightCol[i] = uLight[i].color;
+
+	}
+
+	
 
 	gl_Position = uWorldViewProjectionMatrix * vec4(aPosition, 1.0);
 }
@@ -135,6 +181,11 @@ void main()
 
 in vec2 vTexCoord;
 in vec3 vPosition;
+in vec3 vNormal;
+in vec3 vViewDir;
+flat in unsigned int vLightCount;
+in vec3 vLightDir[16];
+in vec3 vLightCol[16];
 
 uniform sampler2D uTexture;
 
@@ -142,9 +193,25 @@ layout(location = 0) out vec4 oColor;
 
 void main()
 {
+	vec4 col = texture(uTexture, vTexCoord);
+	vec3 totalColor = vec3(0);
+
+	if (vLightCount > 0)
+	{
+		for	(unsigned int i = 0; i < vLightCount; i++)
+		{
+			float lightEff = dot(vNormal, vLightDir[i]);
+			totalColor += mix(vec3(0), col.xyz /** vLightCol[i]*/, lightEff);
+		}
+		//totalColor /= vLightCount;
+	}
 	
-	oColor = texture(uTexture, vTexCoord);
+
+	
+	
+	oColor = vec4(totalColor, 1);
 }
 
 #endif
 #endif
+

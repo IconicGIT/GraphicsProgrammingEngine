@@ -141,8 +141,8 @@ struct LightObject
     Light light;
     Mesh mesh;
 
-    mat4x4 worldMatrix;
-    mat4x4 worldViewProjectionMatrix;
+    //mat4x4 worldMatrix;
+    //mat4x4 worldViewProjectionMatrix;
 };
 
 struct SceneObject
@@ -248,6 +248,12 @@ struct App
     Buffer uniformBuffer;
     u32 globalParamsOffset;
     u32 globalParamsSize;
+
+
+    GLuint colorAttachmentHandle;
+    GLuint depthAttachmentHandle;
+    GLuint framebufferHandle;
+
 
 };
 

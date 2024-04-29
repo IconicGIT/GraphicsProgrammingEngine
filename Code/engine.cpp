@@ -741,7 +741,7 @@ void Init(App* app)
 
 
     // - programs (and retrieve uniform indices)
-    app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "TEXTURED_GEOMETRY");
+    app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "TEXTURED_GEOMETRY2");
     app->lightIconsProgramIdx = LoadProgram(app, "shaders.glsl", "LIGHT_ICONS");
     Program& texturedGeometryProgram = app->programs[app->texturedGeometryProgramIdx];
 
@@ -832,11 +832,65 @@ void Init(App* app)
 
     //load lights
 
-    //CreateLight(app, DIRECTIONAL_LIGHT, vec3(0, 2, 0), vec3(1), vec3(1));
+    CreateLight(app, DIRECTIONAL_LIGHT, vec3(0, 2, 0), vec3(1), vec3(1));
     CreateLight(app, POINT_LIGHT, vec3(0, 2, 0), vec3(1), vec3(1));
 
     //set light info
     SetLights(app);
+
+
+
+
+    // framebuffers
+    app->colorAttachmentHandle;
+    glGenTextures(1, &app->colorAttachmentHandle);
+    glBindTexture(GL_TEXTURE_2D, app->colorAttachmentHandle);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    app->depthAttachmentHandle;
+    glGenTextures(1, &app->depthAttachmentHandle);
+    glBindTexture(GL_TEXTURE_2D, app->depthAttachmentHandle);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_DEPTH_COMPONENT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    app->framebufferHandle;
+    glGenFramebuffers(1, &app->framebufferHandle);
+    glBindFramebuffer(GL_FRAMEBUFFER, app->framebufferHandle);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, app->colorAttachmentHandle, 0);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, app->depthAttachmentHandle, 0);
+
+    GLenum framebufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (framebufferStatus != GL_FRAMEBUFFER_COMPLETE)
+    {
+        switch (framebufferStatus)
+        {
+        case GL_FRAMEBUFFER_UNDEFINED:                              ELOG("GL_FRAMEBUFFER_UNDEFINED"); break;
+        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:                  ELOG("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT"); break;
+        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:          ELOG("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT"); break;
+        case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:                 ELOG("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER"); break;
+        case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:                 ELOG("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER"); break;
+        case GL_FRAMEBUFFER_UNSUPPORTED:                            ELOG("GL_FRAMEBUFFER_UNSUPPORTED"); break;
+        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:                 ELOG("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE"); break;
+        case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:               ELOG("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS"); break;
+        default: ELOG("Unknown framebuffer status error");
+            break;
+        }
+    }
+
+    glDrawBuffers(1, &app->colorAttachmentHandle);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 }
 
 float imageSize = 30;
@@ -886,10 +940,15 @@ void Gui(App* app)
             if (ImGui::TreeNode(scObjName.c_str()))
             {
                 if (scObj.light.type == DIRECTIONAL_LIGHT)
-                    ImGui::DragFloat3("Direction", &scObj.light.position[0], 0.05f, 0.0f, 0.0f, "%.2f");
+                    ImGui::DragFloat3("Direction", &scObj.light.direction[0], 0.05f, 0.0f, 0.0f, "%.2f");
 
                 if (scObj.light.type == POINT_LIGHT)
                     ImGui::DragFloat3("Position", &scObj.light.position[0], 0.05f, 0.0f, 0.0f, "%.2f");
+
+                ImGui::ColorEdit3("Color", &scObj.light.color[0]);
+
+                std::cout << scObj.light.color[0]  << " " << scObj.light.color[1] << " " << scObj.light.color[2] << std::endl;
+
                 ImGui::TreePop();
             }
         }
@@ -1145,15 +1204,7 @@ void Render(App* app)
                 {
                     LightObject& lo = app->lightObjects[i];
                     ErrorGuardOGL error("aaaa", __FILE__, __LINE__);
-
-                    std::string lType = "";
-
-                    if (lo.light.type == 1) 
-                        lType = "(Directional)";
-                    if (lo.light.type == 2) 
-                        lType = "(Point)";
-
-                    std::string groupName = "Light" + std::to_string(lo.Idx) + " " + lType;
+                    std::string groupName = "Light" + std::to_string(lo.Idx);
                     glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 1, -1, groupName.c_str());
 
                     glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->uniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
