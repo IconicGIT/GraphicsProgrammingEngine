@@ -239,7 +239,7 @@ struct App
     GLuint programUniformTexture = 1004;
 
     // VAO object to link our screen filling quad with our textured quad shader
-    GLuint vao;
+    GLuint screenQuadVao;
 
     Camera camera;
 

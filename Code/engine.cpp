@@ -100,6 +100,57 @@ u32 LoadProgram(App* app, const char* filepath, const char* programName)
     program.filepath = filepath;
     program.programName = programName;
     program.lastWriteTimestamp = GetFileLastWriteTimestamp(filepath);
+
+
+    //put attributes automatically
+    int attCount;
+    glGetProgramiv(program.handle, GL_ACTIVE_ATTRIBUTES, &attCount);
+
+    std::vector<GLchar> nameData(256); // Buffer to store attribute names
+    std::cout << program.programName << " Attributes:   ------------------------------------------------------" << std::endl;
+
+    for (GLint i = 0; i < attCount; ++i) {
+        GLsizei length;
+        GLint size;
+        GLenum type;
+        glGetActiveAttrib(program.handle, i, static_cast<GLsizei>(nameData.size()), &length, &size, &type, nameData.data());
+
+        // Get attribute name
+        std::string attributeName(nameData.data(), length);
+
+        // Get attribute location
+        u8 location = glGetAttribLocation(program.handle, attributeName.c_str());
+
+        u8 attribSize = 0;
+        switch (type) {
+        case GL_FLOAT:
+            attribSize = 1;
+            break;
+        case GL_FLOAT_VEC2:
+            attribSize = 2;
+
+            break;
+        case GL_FLOAT_VEC3:
+            attribSize = 3;
+
+            break;
+        case GL_FLOAT_VEC4:
+            attribSize = 4;
+
+            break;
+            // Add cases for other types as needed
+        default:
+            attribSize = 0;
+
+            break;
+        }
+
+        program.vertexShaderLayout.attributes.push_back({ location, attribSize });
+
+        // Store or process the attribute information as needed
+        std::cout << "Attribute " << i << ": Name = " << attributeName << ", Size = " << size << ", Type = " << type << ", Location = " << (int)location << std::endl;
+    }
+
     app->programs.push_back(program);
 
     return app->programs.size() - 1;
@@ -560,7 +611,9 @@ void Init(App* app)
 
 
    
-
+    // - programs (and retrieve uniform indices)
+    app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "TEXTURED_GEOMETRY2");
+    app->screenRectProgramIdx = LoadProgram(app, "shaders.glsl", "SCREEN_RECT");
     
     {
 
@@ -575,37 +628,13 @@ void Init(App* app)
 
 
 
-        std::vector<float> vertices;
-
-        vertices.push_back(-0.5f);
-        vertices.push_back(-0.5f);
-        vertices.push_back(0.0f);
-
-        vertices.push_back(0.f);
-        vertices.push_back(0.f);
-
-
-        vertices.push_back(0.5f);
-        vertices.push_back(-0.5f);
-        vertices.push_back(0.0f);
-
-        vertices.push_back(1.f);
-        vertices.push_back(0.f);
-
-        vertices.push_back(0.5f);
-        vertices.push_back(0.5f);
-        vertices.push_back(0.0f);
-
-        vertices.push_back(1.f);
-        vertices.push_back(1.f);
-
-
-        vertices.push_back(-0.5f);
-        vertices.push_back(0.5f);
-        vertices.push_back(0.0f);
-
-        vertices.push_back(0.f);
-        vertices.push_back(1.f);
+        float vertices[] = 
+        {
+            -0.5f, -0.5f, 0.0f,  0.0f, 0.0f,
+             0.5f, -0.5f, 0.0f,  1.0f, 0.0f,
+             0.5f,  0.5f, 0.0f,  1.0f, 1.0f,
+            -0.5f,  0.5f, 0.0f,  0.0f, 1.0f
+        };
 
 
         // - define vertex buffers
@@ -617,7 +646,7 @@ void Init(App* app)
         //    {glm::vec3(-0.5,  0.5, 0.0), glm::vec2(0,1)}, // top left
         //};
 
-        std::vector<u32> indices = { 0,1,2, 0,2,3 };
+        u32 indices[] = { 0,1,2, 0,2,3 };
 
 
         //const u16 indices[] =
@@ -634,40 +663,62 @@ void Init(App* app)
         vertexBufferLayout.attributes.push_back(VertexBufferAttribute{ 1, 2, 3 * sizeof(float) }); // 1: location, 3: components (2 floats per texture coord), 0: offset (from start to this location, 3 floats come before this)
         vertexBufferLayout.stride = 5 * sizeof(float); //3 for position + 2 for tex coords
 
-        //build submesh
-        Submesh submesh = {};
-        submesh.vertexBufferLayout = vertexBufferLayout;
-        submesh.vertices.swap(vertices);
-        submesh.indices.swap(indices);
+       
 
-        Mesh m_quad;
-        m_quad.submeshes.push_back(submesh);
+        
 
-        app->m_quad = m_quad;
+        
 
 
+        // Generate and bind VBO for vertices
         glGenBuffers(1, &app->embeddedVertices);
         glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), &vertices, GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices) , vertices, GL_STATIC_DRAW);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
-        
-        // - init element/index buffers
+
+        // Generate and bind EBO for indices
         glGenBuffers(1, &app->embeddedElements);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), &indices, GL_STATIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-        
-        // - vaos
-        glGenVertexArrays(1, &app->vao);
-        glBindVertexArray(app->vao);
+
+        // Generate and bind VAO
+        glGenVertexArrays(1, &app->screenQuadVao);
+        glBindVertexArray(app->screenQuadVao);
+
+        // Bind VBO and set attribute pointers
         glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)0);
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 2, GL_INT, GL_FALSE, sizeof(int), (void*)12);
-        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)(sizeof(float) * 3));
+        glEnableVertexAttribArray(1);
+
+        // Bind EBO
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
+
+        // Unbind VAO
         glBindVertexArray(0);
 
+
+        ////build submesh
+        //Submesh submesh = {};
+        //submesh.vertexBufferLayout = vertexBufferLayout;
+        //submesh.vertices.swap(vertices);
+        //submesh.indices.swap(indices);
+
+        //Mesh m_quad;
+        //m_quad.submeshes.push_back(submesh);
+
+        //m_quad.vertexBufferHandle = app->embeddedVertices;
+        //m_quad.indexBufferHandle = app->embeddedElements;
+
+        //Vao vao;
+        //vao.handle = app->vao;
+        //vao.programHandle = app->programs[app->screenRectProgramIdx].handle;
+
+        //m_quad.submeshes[0].vaos.push_back(vao); 
+
+        //app->m_quad = m_quad;
     }
 
 
@@ -675,9 +726,7 @@ void Init(App* app)
 
 
 
-    // - programs (and retrieve uniform indices)
-    app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "TEXTURED_GEOMETRY2");
-    app->screenRectProgramIdx = LoadProgram(app, "shaders.glsl", "SCREEN_RECT");
+
     Program& texturedGeometryProgram = app->programs[app->texturedGeometryProgramIdx];
 
 
@@ -690,54 +739,9 @@ void Init(App* app)
     //
     //std::cout << "block index: " << blockIndex << " of size: " << blockSize << std::endl;
 
-    //put attributes automatically
-    int attCount;
-    glGetProgramiv(texturedGeometryProgram.handle, GL_ACTIVE_ATTRIBUTES, &attCount);
+    
 
-    std::vector<GLchar> nameData(256); // Buffer to store attribute names
-    for (GLint i = 0; i < attCount; ++i) {
-        GLsizei length;
-        GLint size;
-        GLenum type;
-        glGetActiveAttrib(texturedGeometryProgram.handle, i, static_cast<GLsizei>(nameData.size()), &length, &size, &type, nameData.data());
-
-        // Get attribute name
-        std::string attributeName(nameData.data(), length);
-
-        // Get attribute location
-        u8 location = glGetAttribLocation(texturedGeometryProgram.handle, attributeName.c_str());
-
-        u8 attribSize = 0;
-        switch (type) {
-        case GL_FLOAT:
-            attribSize = 1;
-            break;
-        case GL_FLOAT_VEC2:
-            attribSize = 2;
-
-            break;
-        case GL_FLOAT_VEC3:
-            attribSize = 3;
-
-            break;
-        case GL_FLOAT_VEC4:
-            attribSize = 4;
-
-            break;
-            // Add cases for other types as needed
-        default:
-            attribSize = 0;
-
-            break;
-        }
-
-        texturedGeometryProgram.vertexShaderLayout.attributes.push_back({ location, attribSize });
-
-        // Store or process the attribute information as needed
-        std::cout << "Attribute " << i << ": Name = " << attributeName << ", Size = " << size << ", Type = " << type << ", Location = " << (int)location << std::endl;
-    }
-
-    app->programUniformTexture = glGetUniformLocation(texturedGeometryProgram.handle, "uTexture");
+    app->programUniformTexture = glGetUniformLocation(app->programs[app->screenRectProgramIdx].handle, "screenTexture");
  
 
     
@@ -1097,7 +1101,7 @@ void Render(App* app)
                 glUniform1i(app->programUniformTexture, 0);
 
                 // - bind the vao
-                glBindVertexArray(app->vao);
+                glBindVertexArray(app->screenQuadVao);
 
                 glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
 
@@ -1141,10 +1145,31 @@ void Render(App* app)
             //
             //    }
             
+            ////draw screen rect
+            
+            glDisable(GL_DEPTH_TEST);
+
+
+            //set screen rect shader
+            Program currentProgram = app->programs[app->screenRectProgramIdx];
+            glUseProgram(currentProgram.handle);
+
+            glUniform1i(app->programUniformTexture, 0);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, app->textures[app->diceTexIdx].handle);
+
+
+            glBindVertexArray(app->screenQuadVao);
+
+            //glBindTexture(GL_TEXTURE_2D, app->colorAttachmentHandle);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+
+            //glDrawElements(GL_TRIANGLES, app->m_quad.submeshes[0].indices.size(), GL_UNSIGNED_INT, (void*)0);
 
             ////use mesh textured shader
-            Program &currentProgram = app->programs[app->texturedGeometryProgramIdx];
+            currentProgram = app->programs[app->texturedGeometryProgramIdx];
             glUseProgram(currentProgram.handle);
+            glEnable(GL_DEPTH_TEST);
 
 
             
@@ -1212,18 +1237,7 @@ void Render(App* app)
 
                 glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-                ////draw screen rect
-                ////set screen rect shader
-                //currentProgram = app->programs[app->screenRectProgramIdx];
-                //glUseProgram(currentProgram.handle);
-                //glUniform1i(glGetUniformLocation(currentProgram.handle, "screenTexture"), 0);
-                //
-
-                //GLuint rectVao = FindVAO(app->m_quad, 0, currentProgram);
-                //glBindVertexArray(rectVao);
-                //glDisable(GL_DEPTH_TEST);
-                //glBindTexture(GL_TEXTURE_2D, app->colorAttachmentHandle);
-                //glDrawElements(GL_TRIANGLES, app->m_quad.submeshes[0].indices.size(), GL_UNSIGNED_INT, &app->m_quad.submeshes[0].indices);
+                
 
             }
         }
