@@ -213,12 +213,12 @@ struct App
     std::vector<LightObject>    lightObjects;
 
     //premade models
-    Model m_quad;
+    Mesh m_quad;
 
 
     // program indices
     u32 texturedGeometryProgramIdx;
-    u32 lightIconsProgramIdx;
+    u32 screenRectProgramIdx;
     
     // texture indices
     u32 diceTexIdx;
