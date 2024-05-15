@@ -223,7 +223,10 @@ void main()
 
 
 layout(location = 0) in vec3 aPosition;	// world space
-layout(location = 1) in vec2 aTexCoord;
+layout(location = 1) in vec3 aNormal;	// world space
+layout(location = 2) in vec2 aTexCoord;
+layout(location = 3) in vec3 aTangent;
+layout(location = 4) in vec3 aBitangent;
 
 out vec2 vTexCoord;
 

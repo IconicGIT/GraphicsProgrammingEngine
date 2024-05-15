@@ -667,38 +667,41 @@ void Init(App* app)
 
         
 
-        
+        LoadModel(app, "Models/ScreenQuad/screenQuad.obj", vec3(0, 0, 0));
 
+        //Mesh quadMesh = app->sceneObjects[0].mesh;
+        //Submesh quadSubMesh = quadMesh.submeshes[0];
 
-        // Generate and bind VBO for vertices
-        glGenBuffers(1, &app->embeddedVertices);
-        glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices) , vertices, GL_STATIC_DRAW);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        //// Generate and bind VBO for vertices
+        //glGenBuffers(1, &app->embeddedVertices);
+        //glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
+        //glBufferData(GL_ARRAY_BUFFER, sizeof(vertices) , vertices, GL_STATIC_DRAW);
+        //glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-        // Generate and bind EBO for indices
-        glGenBuffers(1, &app->embeddedElements);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        //// Generate and bind EBO for indices
+        //glGenBuffers(1, &app->embeddedElements);
+        //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
+        //glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quadSubMesh.indices), &quadSubMesh.indices, GL_STATIC_DRAW);
+        //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
         // Generate and bind VAO
-        glGenVertexArrays(1, &app->screenQuadVao);
-        glBindVertexArray(app->screenQuadVao);
+        //glGenVertexArrays(1, &app->screenQuadVao);
+        //glBindVertexArray(app->screenQuadVao);
 
-        // Bind VBO and set attribute pointers
-        glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)0);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)(sizeof(float) * 3));
-        glEnableVertexAttribArray(1);
+        //// Bind VBO and set attribute pointers
+        //glBindBuffer(GL_ARRAY_BUFFER, app->embeddedVertices);
+        //glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)0);
+        //glEnableVertexAttribArray(0);
+        //glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)(sizeof(float) * 3));
+        //glEnableVertexAttribArray(1);
 
-        // Bind EBO
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
+        //// Bind EBO
+        //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->embeddedElements);
 
-        // Unbind VAO
-        glBindVertexArray(0);
+        //// Unbind VAO
+        //glBindVertexArray(0);
 
+        //app->screenQuadVao = FindVAO(quadMesh, 0, app->programs[app->screenRectProgramIdx]);
 
         ////build submesh
         //Submesh submesh = {};
@@ -770,6 +773,8 @@ void Init(App* app)
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     // load models
+    
+    
     LoadModel(app, "Models/Patrick/Patrick.obj", vec3(0, 0, 3));
     LoadModel(app, "Models/Patrick/Patrick.obj", vec3(0, 0, -3));
 
@@ -1093,17 +1098,22 @@ void Render(App* app)
                 glBindTexture(GL_TEXTURE_2D, textureHandle);
 
                 // - bind the program 
-                Program& programTexturedGeometry = app->programs[app->texturedGeometryProgramIdx];
-                glUseProgram(programTexturedGeometry.handle);
+                Program& currentProgram = app->programs[app->screenRectProgramIdx];
+                glUseProgram(currentProgram.handle);
                 
 
                 //   (...and make its texture sample from unit 0)
                 glUniform1i(app->programUniformTexture, 0);
 
                 // - bind the vao
+                Mesh quadMesh = app->sceneObjects[0].mesh;
+                Submesh quadSubMesh = quadMesh.submeshes[0];
+                app->screenQuadVao = FindVAO(quadMesh, 0, currentProgram);
                 glBindVertexArray(app->screenQuadVao);
 
-                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+                //glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+                //Submesh& submesh = app->sceneObjects[0].mesh.submeshes[0];
+                //glDrawElements(GL_TRIANGLES, quadSubMesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)quadSubMesh.indexOffset);
 
                 glBindVertexArray(0);
                 glUseProgram(0);
@@ -1115,7 +1125,7 @@ void Render(App* app)
             //ErrorGuardOGL error("Render() [Mode_TexturedMeshes]", __FILE__, __LINE__);
 
             //bind frameBuffer object
-            //glBindFramebuffer(GL_FRAMEBUFFER, app->framebufferHandle);
+            glBindFramebuffer(GL_FRAMEBUFFER, app->framebufferHandle);
 
 
             // - clear the framebuffer
@@ -1145,29 +1155,10 @@ void Render(App* app)
             //
             //    }
             
-            ////draw screen rect
             
-            glDisable(GL_DEPTH_TEST);
-
-
-            //set screen rect shader
-            Program currentProgram = app->programs[app->screenRectProgramIdx];
-            glUseProgram(currentProgram.handle);
-
-            glUniform1i(app->programUniformTexture, 0);
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, app->textures[app->diceTexIdx].handle);
-
-
-            glBindVertexArray(app->screenQuadVao);
-
-            //glBindTexture(GL_TEXTURE_2D, app->colorAttachmentHandle);
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
-
-            //glDrawElements(GL_TRIANGLES, app->m_quad.submeshes[0].indices.size(), GL_UNSIGNED_INT, (void*)0);
 
             ////use mesh textured shader
-            currentProgram = app->programs[app->texturedGeometryProgramIdx];
+            Program currentProgram = app->programs[app->texturedGeometryProgramIdx];
             glUseProgram(currentProgram.handle);
             glEnable(GL_DEPTH_TEST);
 
@@ -1199,7 +1190,7 @@ void Render(App* app)
 
             //draw meshes
             if (app->sceneObjects.size() > 0)
-            for (size_t m = 0; m < app->sceneObjects.size(); m++)
+            for (size_t m = 1; m < app->sceneObjects.size(); m++)
             {
                 SceneObject& scObj = app->sceneObjects[m];
 
@@ -1230,16 +1221,43 @@ void Render(App* app)
 
                     Submesh& submesh = mesh.submeshes[i];
                     glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
+                    glBindTexture(GL_TEXTURE_2D, 0);
 
                     glPopDebugGroup();
                 }
                 //std::cout << "Next Render call --------------------------------------------------------------------" << std::endl;
-
-                glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-                
-
             }
+
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+            ////draw screen rect
+
+            glDisable(GL_DEPTH_TEST);
+
+
+            // - bind the texture into unit 0
+            glActiveTexture(GL_TEXTURE0);
+            GLuint textureHandle = app->textures[app->diceTexIdx].handle;
+            glBindTexture(GL_TEXTURE_2D, textureHandle);
+
+            // - bind the program 
+            currentProgram = app->programs[app->screenRectProgramIdx];
+            glUseProgram(currentProgram.handle);
+
+
+            //   (...and make its texture sample from unit 0)
+            glUniform1i(app->programUniformTexture, 0);
+
+            // - bind the vao
+            Mesh quadMesh = app->sceneObjects[0].mesh;
+            Submesh quadSubMesh = quadMesh.submeshes[0];
+            app->screenQuadVao = FindVAO(quadMesh, 0, currentProgram);
+            glBindVertexArray(app->screenQuadVao);
+
+            //glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+            //Submesh& submesh = app->sceneObjects[0].mesh.submeshes[0];
+            glDrawElements(GL_TRIANGLES, quadSubMesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)quadSubMesh.indexOffset);
+
         }
             break;
 

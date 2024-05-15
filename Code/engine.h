@@ -240,6 +240,7 @@ struct App
 
     // VAO object to link our screen filling quad with our textured quad shader
     GLuint screenQuadVao;
+    Mesh quadMesh;
 
     Camera camera;
 
