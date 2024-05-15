@@ -801,24 +801,23 @@ void Init(App* app)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    //app->depthAttachmentHandle;
-    //glGenTextures(1, &app->depthAttachmentHandle);
-    //glBindTexture(GL_TEXTURE_2D, app->depthAttachmentHandle);
-    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, app->displaySize.x, app->displaySize.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    //glBindTexture(GL_TEXTURE_2D, 0);
-    //glBindTexture(GL_TEXTURE_2D, 0);
+    app->depthAttachmentHandle;
+    glGenTextures(1, &app->depthAttachmentHandle);
+    glBindTexture(GL_TEXTURE_2D, app->depthAttachmentHandle);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, app->displaySize.x, app->displaySize.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     //attach frame buffers 
     app->framebufferHandle;
     glGenFramebuffers(1, &app->framebufferHandle);
     glBindFramebuffer(GL_FRAMEBUFFER, app->framebufferHandle);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->colorAttachmentHandle, 0);
-    //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, app->depthAttachmentHandle, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, app->depthAttachmentHandle, 0);
 
 
     GLenum framebufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -1060,6 +1059,18 @@ void Update(App* app)
     //
     //}
     //glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+
+
+    //update frameBuffers
+    glBindTexture(GL_TEXTURE_2D, app->colorAttachmentHandle);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glBindTexture(GL_TEXTURE_2D, app->depthAttachmentHandle);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, app->displaySize.x, app->displaySize.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
 }
 
 void Render(App* app)
@@ -1127,6 +1138,8 @@ void Render(App* app)
             //bind frameBuffer object
             glBindFramebuffer(GL_FRAMEBUFFER, app->framebufferHandle);
 
+            GLuint drawBuffers[] = { GL_COLOR_ATTACHMENT0 };
+            glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);
 
             // - clear the framebuffer
             glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -1160,12 +1173,10 @@ void Render(App* app)
             ////use mesh textured shader
             Program currentProgram = app->programs[app->texturedGeometryProgramIdx];
             glUseProgram(currentProgram.handle);
-            glEnable(GL_DEPTH_TEST);
 
 
             
-            /*GLuint drawBuffers[] = { GL_COLOR_ATTACHMENT0 };
-            glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);*/
+            
 
 
 
@@ -1218,6 +1229,7 @@ void Render(App* app)
                     glBindTexture(GL_TEXTURE_2D, tex->handle);
                     glUniform1i(app->programUniformTexture, 0);
                     //std::cout << "Using texture: " << std::string(tex->filepath) << std::endl;
+                    glEnable(GL_DEPTH_TEST);
 
                     Submesh& submesh = mesh.submeshes[i];
                     glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
@@ -1235,10 +1247,7 @@ void Render(App* app)
             glDisable(GL_DEPTH_TEST);
 
 
-            // - bind the texture into unit 0
-            glActiveTexture(GL_TEXTURE0);
-            GLuint textureHandle = app->textures[app->diceTexIdx].handle;
-            glBindTexture(GL_TEXTURE_2D, textureHandle);
+            
 
             // - bind the program 
             currentProgram = app->programs[app->screenRectProgramIdx];
@@ -1247,6 +1256,11 @@ void Render(App* app)
 
             //   (...and make its texture sample from unit 0)
             glUniform1i(app->programUniformTexture, 0);
+
+            // - bind the texture into unit 0
+            glActiveTexture(GL_TEXTURE0);
+            //GLuint textureHandle = app->textures[app->diceTexIdx].handle;
+            glBindTexture(GL_TEXTURE_2D, app->colorAttachmentHandle);
 
             // - bind the vao
             Mesh quadMesh = app->sceneObjects[0].mesh;
@@ -1257,6 +1271,9 @@ void Render(App* app)
             //glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
             //Submesh& submesh = app->sceneObjects[0].mesh.submeshes[0];
             glDrawElements(GL_TRIANGLES, quadSubMesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)quadSubMesh.indexOffset);
+
+            glEnable(GL_DEPTH_TEST);
+
 
         }
             break;
