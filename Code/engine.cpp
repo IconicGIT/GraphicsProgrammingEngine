@@ -877,6 +877,12 @@ void Gui(App* app)
     ImGui::Begin("Info");
     ImGui::Text("FPS: %f", 1.0f/app->deltaTime);
     
+    ImGui::Text("Change Rendering Mode: ");
+    if (ImGui::Button((app->rendering_deferred) ? "Derferred" : "Forward", ImVec2(100, 20)))
+    {
+        app->rendering_deferred = !app->rendering_deferred;
+    }
+
     ImGui::Text("Loaded Textures");
 
     if (ImGui::TreeNode("Textures"))
@@ -1161,10 +1167,15 @@ void Render(App* app)
             //ErrorGuardOGL error("Render() [Mode_TexturedMeshes]", __FILE__, __LINE__);
 
             //bind frameBuffer object
-            glBindFramebuffer(GL_FRAMEBUFFER, app->framebufferHandle);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            if (app->rendering_deferred)
+            {
+                glBindFramebuffer(GL_FRAMEBUFFER, app->framebufferHandle);
 
-            GLenum drawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
-            glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);
+                GLenum drawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
+                glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);
+            }
+            
 
             // - clear the framebuffer
             glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -1177,35 +1188,23 @@ void Render(App* app)
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-            //use light icons shader
-            
-
-            //if (app->lightObjects.size() > 0)
-            //    for (size_t i = 0; i < app->lightObjects.size(); i++)
-            //    {
-            //        ErrorGuardOGL error("aaaa", __FILE__, __LINE__);
-            //        std::string groupName = "Light mesh" + std::to_string(app->lightObjects[i].Idx);
-            //        glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 1, -1, groupName.c_str());
-            //
-            //        glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->uniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
-            //
-            //        glPopDebugGroup();
-            //
-            //    }
-            
             
 
             ////use mesh textured shader
-            Program currentProgram = app->programs[app->deferredRenderingProgramIdx];
+            Program currentProgram = app->programs[app->forwardRenderingProgramIdx];
             glUseProgram(currentProgram.handle);
 
-
+            if (app->rendering_deferred)
+            {
+                currentProgram = app->programs[app->deferredRenderingProgramIdx];
+                glUseProgram(currentProgram.handle);
+            }
             
             
 
 
 
-            //ErrorGuardOGL error("FBff", __FILE__, __LINE__);
+            ErrorGuardOGL error("FBff", __FILE__, __LINE__);
 
 
             
@@ -1250,19 +1249,11 @@ void Render(App* app)
                     Texture* tex = &app->textures[submeshMaterial.albedoTextureIdx];
 
                     glActiveTexture(GL_TEXTURE0);
-                    if (m == 1)
-                    {
-                        glBindTexture(GL_TEXTURE_2D, app->colorAttachmentHandle);
-                    }
-                    else
-                    {
-                        glBindTexture(GL_TEXTURE_2D, tex->handle);
-                    }
+                    glBindTexture(GL_TEXTURE_2D, tex->handle);
+                    
                    
                     
                     glUniform1i(app->programUniformTexture, 0);
-                    //std::cout << "Using texture: " << std::string(tex->filepath) << std::endl;
-                    glEnable(GL_DEPTH_TEST);
 
                     Submesh& submesh = mesh.submeshes[i];
                     glDrawElements(GL_TRIANGLES, submesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)submesh.indexOffset);
@@ -1273,40 +1264,39 @@ void Render(App* app)
                 //std::cout << "Next Render call --------------------------------------------------------------------" << std::endl;
             }
 
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-            ////draw screen rect
-
-            glDisable(GL_DEPTH_TEST);
 
 
+            if (app->rendering_deferred)
+            {
+                ////draw screen rect
+                glBindFramebuffer(GL_FRAMEBUFFER, 0);
+                glDisable(GL_DEPTH_TEST);
+
+                // - bind the program 
+                currentProgram = app->programs[app->screenRectProgramIdx];
+                glUseProgram(currentProgram.handle);
+
+
+                //   (...and make its texture sample from unit 0)
+
+                // - bind the texture into unit 0
+                glActiveTexture(GL_TEXTURE0);
+                //GLuint textureHandle = app->textures[app->diceTexIdx].handle;
+                glBindTexture(GL_TEXTURE_2D, app->normalAttachmentHandle);
+
+                //glUniform1f(glGetUniformLocation(currentProgram.handle, "a"), abs(sin(angle)));
+
+                // - bind the vao
+                Mesh quadMesh = app->sceneObjects[0].mesh;
+                Submesh quadSubMesh = quadMesh.submeshes[0];
+                app->screenQuadVao = FindVAO(quadMesh, 0, currentProgram);
+                glBindVertexArray(app->screenQuadVao);
+
+                glDrawElements(GL_TRIANGLES, quadSubMesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)quadSubMesh.indexOffset);
+
+                glEnable(GL_DEPTH_TEST);
+            }
             
-
-            // - bind the program 
-            currentProgram = app->programs[app->screenRectProgramIdx];
-            glUseProgram(currentProgram.handle);
-
-
-            //   (...and make its texture sample from unit 0)
-
-            // - bind the texture into unit 0
-            glActiveTexture(GL_TEXTURE0);
-            //GLuint textureHandle = app->textures[app->diceTexIdx].handle;
-            glBindTexture(GL_TEXTURE_2D, app->normalAttachmentHandle);
-
-            //glUniform1f(glGetUniformLocation(currentProgram.handle, "a"), abs(sin(angle)));
-
-            // - bind the vao
-            Mesh quadMesh = app->sceneObjects[0].mesh;
-            Submesh quadSubMesh = quadMesh.submeshes[0];
-            app->screenQuadVao = FindVAO(quadMesh, 0, currentProgram);
-            glBindVertexArray(app->screenQuadVao);
-
-            //glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
-            //Submesh& submesh = app->sceneObjects[0].mesh.submeshes[0];
-            glDrawElements(GL_TRIANGLES, quadSubMesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)quadSubMesh.indexOffset);
-
-            glEnable(GL_DEPTH_TEST);
 
             angle += 0.01f;
         }

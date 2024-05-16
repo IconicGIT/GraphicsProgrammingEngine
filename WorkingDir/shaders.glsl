@@ -307,7 +307,7 @@ in vec3 vLightCol[MAX_LIGHT_COUNT];
 
 uniform sampler2D uTexture;
 
-layout(location = 0) out vec4 oPosition;
+layout(location = 0) out vec4 oColor;
 
 void main()
 {
