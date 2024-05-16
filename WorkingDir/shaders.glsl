@@ -239,6 +239,14 @@ void main()
 #if defined(VERTEX) ///////////////////////////////////////////////////
 
 // TODO: Write your vertex shader here
+struct Light
+{
+	unsigned int type;
+    vec3 color;
+    vec3 direction;
+    vec3 position;
+};
+
 
 
 layout(location = 0) in vec3 aPosition;	// world space
@@ -247,12 +255,51 @@ layout(location = 2) in vec2 aTexCoord;
 layout(location = 3) in vec3 aTangent;
 layout(location = 4) in vec3 aBitangent;
 
+layout (binding = 0, std140) uniform globalParams
+{
+	vec3			uCameraPosition;
+	unsigned int	uLightCount;
+	Light			uLight[MAX_LIGHT_COUNT];
+};
+
+layout(binding = 1, std140) uniform localParams
+{
+	mat4 uWorldMatrix;
+	mat4 uWorldViewProjectionMatrix;
+};
+
 out vec2 vTexCoord;
+out vec3 vViewDir;
+vec3 vPosition;
+
+flat out unsigned int vLightCount;
+out vec3 vLightDir[MAX_LIGHT_COUNT];
+out vec3 vLightCol[MAX_LIGHT_COUNT];
 
 
 void main()
 {
 	vTexCoord = aTexCoord;
+	vPosition = vec3(uWorldMatrix * vec4(aPosition, 1.0));
+	vViewDir = uCameraPosition - vPosition;
+	vLightCount = uLightCount;
+
+	if (uLightCount > 0)
+		for	(unsigned int i = 0; i < uLightCount; i++)
+		{
+			if (uLight[i].type == 1)
+			{
+				vLightDir[i] = normalize(uLight[i].direction);
+			}
+
+			if (uLight[i].type == 2)
+			{
+				vLightDir[i] = normalize(uLight[i].position - vPosition);
+			}
+
+			vLightCol[i] = uLight[i].color;
+		}
+
 	gl_Position = vec4(aPosition.x, aPosition.y, 0.0 , 1.0);
 }
 
@@ -261,6 +308,11 @@ void main()
 // TODO: Write your fragment shader here
 
 in vec2 vTexCoord;
+in vec3 vViewDir;
+
+flat in unsigned int vLightCount;
+in vec3 vLightDir[MAX_LIGHT_COUNT];
+in vec3 vLightCol[MAX_LIGHT_COUNT];
 
 uniform sampler2D positionTexture;
 uniform sampler2D colorTexture;
@@ -277,12 +329,21 @@ void main()
     vec4 normal = texture(normalTexture, vTexCoord);
     vec4 depth = texture(depthTexture, vTexCoord);
     
-   
+	vec4 col = texture(colorTexture, vTexCoord);
+	vec3 totalColor = vec3(0);
+
+	if (vLightCount > 0)
+		for	(unsigned int i = 0; i < vLightCount; i++)
+		{
+			float lightEff = dot(normalize(normal.xyz), vLightDir[i]);
+			totalColor += lightEff * vec3(col) * vLightCol[i];//mix(vec3(0), col.xyz, lightEff);
+		}
+	
     
 
 	switch(currentBuffer)
 	{
-	case 0: oColor = color; //resultant mix;
+	case 0: oColor = vec4(totalColor, 1);; //resultant mix;
 	break;
 	case 1: oColor = position;
 	break;

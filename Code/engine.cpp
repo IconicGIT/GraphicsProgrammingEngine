@@ -1266,18 +1266,21 @@ void Render(App* app)
 
             
 
-            //load global uniforms
-            if (app->lightObjects.size() > 0)
-            for (size_t i = 0; i < app->lightObjects.size(); i++)
+            if (!app->rendering_deferred)
             {
-                LightObject& lo = app->lightObjects[i];
-                std::string groupName = "Light" + std::to_string(lo.Idx);
-                glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 1, -1, groupName.c_str());
+                //load global uniforms
+                if (app->lightObjects.size() > 0)
+                    for (size_t i = 0; i < app->lightObjects.size(); i++)
+                    {
+                        LightObject& lo = app->lightObjects[i];
+                        std::string groupName = "Light" + std::to_string(lo.Idx);
+                        glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 1, -1, groupName.c_str());
 
-                glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->uniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
+                        glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->uniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
 
-                glPopDebugGroup();
+                        glPopDebugGroup();
 
+                    }
             }
 
             //draw meshes
@@ -1334,6 +1337,7 @@ void Render(App* app)
 
             if (app->rendering_deferred)
             {
+                
                 ////draw screen rect
                 glBindFramebuffer(GL_FRAMEBUFFER, 0);
                 glDisable(GL_DEPTH_TEST);
@@ -1342,6 +1346,19 @@ void Render(App* app)
                 currentProgram = app->programs[app->screenRectProgramIdx];
                 glUseProgram(currentProgram.handle);
 
+                //load global uniforms
+                if (app->lightObjects.size() > 0)
+                    for (size_t i = 0; i < app->lightObjects.size(); i++)
+                    {
+                        LightObject& lo = app->lightObjects[i];
+                        std::string groupName = "Light" + std::to_string(lo.Idx);
+                        glPushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 1, -1, groupName.c_str());
+
+                        glBindBufferRange(GL_UNIFORM_BUFFER, BINDING(0), app->uniformBuffer.handle, app->globalParamsOffset, app->globalParamsSize);
+
+                        glPopDebugGroup();
+
+                    }
 
                 // - bind the texture into unit 0
                 glUniform1i(glGetUniformLocation(app->programs[app->screenRectProgramIdx].handle, "positionTexture"), 0); //set shader texture variable to GL_TEXTURE0
