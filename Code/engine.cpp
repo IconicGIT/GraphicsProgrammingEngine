@@ -802,6 +802,7 @@ void Init(App* app)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    app->deferredTextures.push_back({"Position",app->positionAttachmentHandle });
     glBindTexture(GL_TEXTURE_2D, 0);
 
     app->colorAttachmentHandle;
@@ -813,6 +814,7 @@ void Init(App* app)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    app->deferredTextures.push_back({"Color", app->colorAttachmentHandle });
     glBindTexture(GL_TEXTURE_2D, 0);
 
     app->normalAttachmentHandle;
@@ -824,6 +826,7 @@ void Init(App* app)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    app->deferredTextures.push_back({"Normal", app->normalAttachmentHandle });
     glBindTexture(GL_TEXTURE_2D, 0);
 
     app->depthAttachmentHandle;
@@ -835,6 +838,7 @@ void Init(App* app)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    app->deferredTextures.push_back({ "Depth", app->depthAttachmentHandle });
     glBindTexture(GL_TEXTURE_2D, 0);
 
     //attach frame buffers 
@@ -868,9 +872,12 @@ void Init(App* app)
     ErrorGuardOGL errorFB("Framebuffers", __FILE__, __LINE__);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+
+
 }
 
 float imageSize = 30;
+float deffImageSize = 0.4f;
 
 void Gui(App* app)
 {
@@ -882,6 +889,23 @@ void Gui(App* app)
     {
         app->rendering_deferred = !app->rendering_deferred;
     }
+
+    if (ImGui::TreeNode("Deferred Textures"))
+    {
+        if (app->deferredTextures.size() > 0)
+            for (size_t i = 0; i < app->deferredTextures.size(); i++)
+            {
+                ImGui::Separator();
+                DeferredTexture& t = app->deferredTextures[i];
+
+                ImVec2 size =  ImVec2(app->displaySize.x * deffImageSize, app->displaySize.y * deffImageSize);
+
+                ImGui::Text(t.name.c_str());
+                ImGui::Image((void*)t.idx, size, ImVec2(0,1), ImVec2(1,0));
+            }
+        ImGui::TreePop();
+    }
+    ImGui::Separator();
 
     ImGui::Text("Loaded Textures");
 
@@ -1103,7 +1127,7 @@ void Update(App* app)
 
 }
 
-float angle = 0;
+
 void Render(App* app)
 {
     switch (app->mode)
@@ -1280,9 +1304,21 @@ void Render(App* app)
                 //   (...and make its texture sample from unit 0)
 
                 // - bind the texture into unit 0
+                glUniform1i(glGetUniformLocation(app->deferredRenderingProgramIdx, "positionTexture"), 0); //set shader texture variable to GL_TEXTURE0
                 glActiveTexture(GL_TEXTURE0);
-                //GLuint textureHandle = app->textures[app->diceTexIdx].handle;
+                glBindTexture(GL_TEXTURE_2D, app->positionAttachmentHandle);
+
+                glUniform1i(glGetUniformLocation(app->deferredRenderingProgramIdx, "colorTexture"), 1); //set shader texture variable to GL_TEXTURE1
+                glActiveTexture(GL_TEXTURE1);
+                glBindTexture(GL_TEXTURE_2D, app->colorAttachmentHandle);
+
+                glUniform1i(glGetUniformLocation(app->deferredRenderingProgramIdx, "normalTexture"), 2); //set shader texture variable to GL_TEXTURE2
+                glActiveTexture(GL_TEXTURE2);
                 glBindTexture(GL_TEXTURE_2D, app->normalAttachmentHandle);
+
+                //glActiveTexture(GL_TEXTURE3);
+                //glBindTexture(GL_TEXTURE_2D, app->depthAttachmentHandle);
+                //glUniform1i(glGetUniformLocation(app->deferredRenderingProgramIdx, "depthTexture"), 3); //set shader texture variable to GL_TEXTURE3
 
                 //glUniform1f(glGetUniformLocation(currentProgram.handle, "a"), abs(sin(angle)));
 
@@ -1295,10 +1331,11 @@ void Render(App* app)
                 glDrawElements(GL_TRIANGLES, quadSubMesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)quadSubMesh.indexOffset);
 
                 glEnable(GL_DEPTH_TEST);
+                glBindTexture(GL_TEXTURE_2D, 0);
+
             }
             
 
-            angle += 0.01f;
         }
             break;
 

@@ -193,6 +193,7 @@ uniform sampler2D uTexture;
 layout(location = 0) out vec4 oPosition;
 layout(location = 1) out vec4 oColor;
 layout(location = 2) out vec4 oNormal;
+layout(location = 3) out vec4 oDepth;
 
 void main()
 {
@@ -362,13 +363,16 @@ void main()
 out vec4 oColor;
 in vec2 vTexCoord;
 
-uniform float a;
+uniform sampler2D positionTexture;
+uniform sampler2D colorTexture;
+uniform sampler2D normalTexture;
+//uniform sampler2D depthTexture;
 uniform sampler2D screenTexture;
 
 
 void main()
 {
-	oColor = texture(screenTexture, vTexCoord);
+	oColor = texture(colorTexture, vTexCoord);
 //	float average = (oColor.r + oColor.g + oColor.b) /3.0;
 //	oColor = vec4(average,average,average,1.0);
 }

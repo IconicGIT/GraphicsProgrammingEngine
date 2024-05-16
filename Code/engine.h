@@ -190,6 +190,12 @@ struct Camera
     void SetValues();
 };
 
+
+struct DeferredTexture
+{
+    std::string name;
+    GLuint idx;
+};
 struct App
 {
     // Loop
@@ -259,6 +265,8 @@ struct App
     GLuint normalAttachmentHandle;
     GLuint depthAttachmentHandle;
     GLuint framebufferHandle;
+
+    std::vector<DeferredTexture> deferredTextures;
 
 
 };
