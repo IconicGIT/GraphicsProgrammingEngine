@@ -776,16 +776,19 @@ void Init(App* app)
     // load models
     
     
-    LoadModel(app, "Models/ScreenQuad/screenQuad.obj", vec3(0, 0, 0));
+    LoadModel(app, "Models/ScreenQuad/screenQuad.obj", vec3(0, 0, -100), vec3(50));
+    LoadModel(app, "Models/Mercedes/mercedes.obj", vec3(-11.1f, -7.5f, 16.f), vec3(5));
 
-    LoadModel(app, "Models/Patrick/Patrick.obj", vec3(0, 0, 3));
+    LoadModel(app, "Models/Patrick/Patrick.obj", vec3(-4.25, -1.3 , -3), vec3(0.8));
     LoadModel(app, "Models/Patrick/Patrick.obj", vec3(0, 0, -3));
+    LoadModel(app, "Models/Patrick/Patrick.obj", vec3(0, 25, -30), vec3(10));
 
     //load lights
 
-    CreateLight(app, DIRECTIONAL_LIGHT, vec3(0, 2, 0), vec3(1), vec3(1));
-    CreateLight(app, POINT_LIGHT, vec3(0, 2, -3), vec3(1), vec3(1));
-    CreateLight(app, POINT_LIGHT, vec3(0, 2, 3), vec3(1), vec3(1));
+    CreateLight(app, DIRECTIONAL_LIGHT, vec3(0, 2, 0), vec3(0, 1, 0), vec3(1));
+    CreateLight(app, POINT_LIGHT, vec3(-40.7, 0, 0), vec3(1), vec3(0, 165.f / 255.f, 1));
+    CreateLight(app, POINT_LIGHT, vec3(40, 0, 0), vec3(1), vec3(233.f / 255.f, 1, 0));
+    CreateLight(app, POINT_LIGHT, vec3(0, 20, 0), vec3(1), vec3(1,0,0));
 
     
     //set framebuffer
@@ -892,9 +895,11 @@ void Gui(App* app)
 {
     ImGui::Begin("Info");
     ImGui::Text("FPS: %f", 1.0f/app->deltaTime);
-    
+    ImGui::Text("Move camera with WASD");
+    ImGui::Text(" ");
+    ImGui::Separator();
     ImGui::Text("Change Rendering Mode: ");
-    if (ImGui::Button((app->rendering_deferred) ? "Derferred" : "Forward", ImVec2(100, 20)))
+    if (ImGui::Button((app->rendering_deferred) ? "Deferred" : "Forward", ImVec2(100, 20)))
     {
         app->rendering_deferred = !app->rendering_deferred;
     }
@@ -1314,6 +1319,11 @@ void Render(App* app)
 
                     if (app->rendering_deferred)
                     {
+                        if (m == 1)
+                        {
+                            glBindTexture(GL_TEXTURE_2D, app->colorAttachmentHandle);
+                        }
+                        
                         glUniform1i(glGetUniformLocation(currentProgram.handle, "uDepthTexture"), 1); //set shader texture variable to GL_TEXTURE1
 
                         glActiveTexture(GL_TEXTURE1);

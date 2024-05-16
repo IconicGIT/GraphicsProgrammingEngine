@@ -108,8 +108,7 @@ void main()
 	oPosition = vec4(vPosition, 1);
 	oColor = texture(uTexture, vTexCoord);
 	oNormal = vec4(normalize(vNormal), 1);
-	float depth = texture(uDepthTexture, vTexCoord).r;
-	oDepth = vec4(vec3(depth), 1);
+	oDepth = texture(uDepthTexture, vTexCoord);
 }
 
 #endif
@@ -218,7 +217,7 @@ void main()
 	if (vLightCount > 0)
 		for	(unsigned int i = 0; i < vLightCount; i++)
 		{
-			float lightEff = dot(vNormal, vLightDir[i]);
+			float lightEff = dot(normalize(vNormal), vLightDir[i]);
 			totalColor += lightEff * vec3(col) * vLightCol[i];//mix(vec3(0), col.xyz, lightEff);
 		}
 	

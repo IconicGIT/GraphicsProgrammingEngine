@@ -260,6 +260,7 @@ struct App
     u32 globalParamsSize;
 
 
+    GLuint combinedAttachmentHandle;
     GLuint positionAttachmentHandle;
     GLuint colorAttachmentHandle;
     GLuint normalAttachmentHandle;
@@ -316,4 +317,4 @@ GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program);
 
 mat4x4 SetPosition(const vec3& translation);
 
-mat4x4 SetScale(const float scale);
+void SetScaling(mat4x4& M, float x, float y, float z);
