@@ -217,8 +217,11 @@ struct App
 
 
     // program indices
-    u32 texturedGeometryProgramIdx;
+    u32 forwardRenderingProgramIdx;
+    u32 deferredRenderingProgramIdx;
     u32 screenRectProgramIdx;
+
+    bool rendering_deferred = false;
     
     // texture indices
     u32 diceTexIdx;
@@ -251,7 +254,9 @@ struct App
     u32 globalParamsSize;
 
 
+    GLuint positionAttachmentHandle;
     GLuint colorAttachmentHandle;
+    GLuint normalAttachmentHandle;
     GLuint depthAttachmentHandle;
     GLuint framebufferHandle;
 

@@ -359,7 +359,7 @@ GLuint FindVAO(Mesh& mesh, u32 submeshIndex, const Program& program)
 
                 glVertexAttribPointer(index, ncomp, GL_FLOAT, GL_FALSE, stride, (void*)(u64)offset);
 
-                ErrorGuardOGL error("FindVAO()", __FILE__, __LINE__);
+                //ErrorGuardOGL error("FindVAO()", __FILE__, __LINE__);
 
                 glEnableVertexAttribArray(index);
 
@@ -612,7 +612,8 @@ void Init(App* app)
 
    
     // - programs (and retrieve uniform indices)
-    app->texturedGeometryProgramIdx = LoadProgram(app, "shaders.glsl", "TEXTURED_GEOMETRY2");
+    app->forwardRenderingProgramIdx = LoadProgram(app, "shaders.glsl", "FORWARD_RENDERING");
+    app->deferredRenderingProgramIdx = LoadProgram(app, "shaders.glsl", "DEFERRED_RENDERING");
     app->screenRectProgramIdx = LoadProgram(app, "shaders.glsl", "SCREEN_RECT");
     
     {
@@ -657,15 +658,15 @@ void Init(App* app)
 
         // - init vertex buffers
 
-        //format and order of the vertex in vertex shader
-        VertexBufferLayout vertexBufferLayout;
-        vertexBufferLayout.attributes.push_back(VertexBufferAttribute{ 0, 3, 0 }); // 0: location, 3: components (3 floats per position), 0: offset
-        vertexBufferLayout.attributes.push_back(VertexBufferAttribute{ 1, 2, 3 * sizeof(float) }); // 1: location, 3: components (2 floats per texture coord), 0: offset (from start to this location, 3 floats come before this)
-        vertexBufferLayout.stride = 5 * sizeof(float); //3 for position + 2 for tex coords
+        ////format and order of the vertex in vertex shader
+        //VertexBufferLayout vertexBufferLayout;
+        //vertexBufferLayout.attributes.push_back(VertexBufferAttribute{ 0, 3, 0 }); // 0: location, 3: components (3 floats per position), 0: offset
+        //vertexBufferLayout.attributes.push_back(VertexBufferAttribute{ 1, 2, 3 * sizeof(float) }); // 1: location, 3: components (2 floats per texture coord), 0: offset (from start to this location, 3 floats come before this)
+        //vertexBufferLayout.stride = 5 * sizeof(float); //3 for position + 2 for tex coords
 
        
 
-        
+        //
 
         LoadModel(app, "Models/ScreenQuad/screenQuad.obj", vec3(0, 0, 0));
 
@@ -684,7 +685,7 @@ void Init(App* app)
         //glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(quadSubMesh.indices), &quadSubMesh.indices, GL_STATIC_DRAW);
         //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-        // Generate and bind VAO
+        // //Generate and bind VAO
         //glGenVertexArrays(1, &app->screenQuadVao);
         //glBindVertexArray(app->screenQuadVao);
 
@@ -730,7 +731,7 @@ void Init(App* app)
 
 
 
-    Program& texturedGeometryProgram = app->programs[app->texturedGeometryProgramIdx];
+    Program& texturedGeometryProgram = app->programs[app->deferredRenderingProgramIdx];
 
 
     //print attribute blocks
@@ -775,6 +776,8 @@ void Init(App* app)
     // load models
     
     
+    LoadModel(app, "Models/ScreenQuad/screenQuad.obj", vec3(0, 0, 0));
+
     LoadModel(app, "Models/Patrick/Patrick.obj", vec3(0, 0, 3));
     LoadModel(app, "Models/Patrick/Patrick.obj", vec3(0, 0, -3));
 
@@ -785,15 +788,37 @@ void Init(App* app)
     CreateLight(app, POINT_LIGHT, vec3(0, 2, 3), vec3(1), vec3(1));
 
     
-    //set screen rect
-
-    
+    //set framebuffer
+    app->framebufferHandle;
+    glGenFramebuffers(1, &app->framebufferHandle);
 
     // framebuffers
+    app->positionAttachmentHandle;
+    glGenTextures(1, &app->positionAttachmentHandle);
+    glBindTexture(GL_TEXTURE_2D, app->positionAttachmentHandle);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, app->displaySize.x, app->displaySize.y, 0, GL_RGB, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
     app->colorAttachmentHandle;
     glGenTextures(1, &app->colorAttachmentHandle);
     glBindTexture(GL_TEXTURE_2D, app->colorAttachmentHandle);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    app->normalAttachmentHandle;
+    glGenTextures(1, &app->normalAttachmentHandle);
+    glBindTexture(GL_TEXTURE_2D, app->normalAttachmentHandle);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, app->displaySize.x, app->displaySize.y, 0, GL_RGB, GL_FLOAT, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
@@ -813,12 +838,12 @@ void Init(App* app)
     glBindTexture(GL_TEXTURE_2D, 0);
 
     //attach frame buffers 
-    app->framebufferHandle;
-    glGenFramebuffers(1, &app->framebufferHandle);
+    
     glBindFramebuffer(GL_FRAMEBUFFER, app->framebufferHandle);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->colorAttachmentHandle, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->positionAttachmentHandle, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, app->colorAttachmentHandle, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, app->normalAttachmentHandle, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, app->depthAttachmentHandle, 0);
-
 
     GLenum framebufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (framebufferStatus != GL_FRAMEBUFFER_COMPLETE)
@@ -839,8 +864,7 @@ void Init(App* app)
         }
     }
 
-    GLenum drawBuffers[] = { GL_COLOR_ATTACHMENT0 };
-    glDrawBuffers(1, drawBuffers);
+
     ErrorGuardOGL errorFB("Framebuffers", __FILE__, __LINE__);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -910,7 +934,7 @@ void Gui(App* app)
     ImGui::Text("Scene Objects");
     ImGui::Separator();
     if (app->sceneObjects.size() > 0)
-    for (size_t i = 0; i < app->sceneObjects.size(); i++)
+    for (size_t i = 1; i < app->sceneObjects.size(); i++)
     {
         SceneObject& scObj = app->sceneObjects[i];
         std::string scObjName = scObj.name + "##" + std::to_string(i);
@@ -952,7 +976,7 @@ void Gui(App* app)
 void Update(App* app)
 {
     // You can handle app->input keyboard/mouse here
-    
+
     app->camera.UpdateCamera(app);
     //std::cout << 1.f / app->deltaTime << " / " << 1.f / app->deltaTime * 10.f << " / " << 1.f / app->deltaTime * 100.f << " / " << 1.f / app->deltaTime * 1000.f<< std::endl;
 
@@ -1068,11 +1092,12 @@ void Update(App* app)
     glBindTexture(GL_TEXTURE_2D, 0);
 
     glBindTexture(GL_TEXTURE_2D, app->depthAttachmentHandle);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, app->displaySize.x, app->displaySize.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, app->displaySize.x, app->displaySize.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
     glBindTexture(GL_TEXTURE_2D, 0);
 
 }
 
+float angle = 0;
 void Render(App* app)
 {
     switch (app->mode)
@@ -1138,7 +1163,7 @@ void Render(App* app)
             //bind frameBuffer object
             glBindFramebuffer(GL_FRAMEBUFFER, app->framebufferHandle);
 
-            GLuint drawBuffers[] = { GL_COLOR_ATTACHMENT0 };
+            GLenum drawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
             glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);
 
             // - clear the framebuffer
@@ -1171,7 +1196,7 @@ void Render(App* app)
             
 
             ////use mesh textured shader
-            Program currentProgram = app->programs[app->texturedGeometryProgramIdx];
+            Program currentProgram = app->programs[app->deferredRenderingProgramIdx];
             glUseProgram(currentProgram.handle);
 
 
@@ -1224,9 +1249,17 @@ void Render(App* app)
 
                     Texture* tex = &app->textures[submeshMaterial.albedoTextureIdx];
 
-
                     glActiveTexture(GL_TEXTURE0);
-                    glBindTexture(GL_TEXTURE_2D, tex->handle);
+                    if (m == 1)
+                    {
+                        glBindTexture(GL_TEXTURE_2D, app->colorAttachmentHandle);
+                    }
+                    else
+                    {
+                        glBindTexture(GL_TEXTURE_2D, tex->handle);
+                    }
+                   
+                    
                     glUniform1i(app->programUniformTexture, 0);
                     //std::cout << "Using texture: " << std::string(tex->filepath) << std::endl;
                     glEnable(GL_DEPTH_TEST);
@@ -1255,12 +1288,13 @@ void Render(App* app)
 
 
             //   (...and make its texture sample from unit 0)
-            glUniform1i(app->programUniformTexture, 0);
 
             // - bind the texture into unit 0
             glActiveTexture(GL_TEXTURE0);
             //GLuint textureHandle = app->textures[app->diceTexIdx].handle;
-            glBindTexture(GL_TEXTURE_2D, app->colorAttachmentHandle);
+            glBindTexture(GL_TEXTURE_2D, app->normalAttachmentHandle);
+
+            //glUniform1f(glGetUniformLocation(currentProgram.handle, "a"), abs(sin(angle)));
 
             // - bind the vao
             Mesh quadMesh = app->sceneObjects[0].mesh;
@@ -1274,7 +1308,7 @@ void Render(App* app)
 
             glEnable(GL_DEPTH_TEST);
 
-
+            angle += 0.01f;
         }
             break;
 
