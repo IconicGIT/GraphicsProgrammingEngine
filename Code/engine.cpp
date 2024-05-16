@@ -835,12 +835,14 @@ void Init(App* app)
     app->depthAttachmentHandle;
     glGenTextures(1, &app->depthAttachmentHandle);
     glBindTexture(GL_TEXTURE_2D, app->depthAttachmentHandle);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, app->displaySize.x, app->displaySize.y, 0, GL_RGB, GL_FLOAT, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, app->displaySize.x, app->displaySize.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
     app->deferredTextures.push_back({ "Depth", app->depthAttachmentHandle });
     glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -850,14 +852,9 @@ void Init(App* app)
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->positionAttachmentHandle, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, app->colorAttachmentHandle, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, app->normalAttachmentHandle, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, app->depthAttachmentHandle, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, app->depthAttachmentHandle, 0);
     //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, app->depthAttachmentHandle, 0);
 
-    app->depthReadHandle;
-    glGenRenderbuffers(1, &app->depthReadHandle);
-    glBindRenderbuffer(GL_RENDERBUFFER, app->depthReadHandle);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, app->displaySize.x, app->displaySize.y);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, app->depthReadHandle);
 
 
 
@@ -931,6 +928,7 @@ void Gui(App* app)
             }
         ImGui::TreePop();
     }
+    ImGui::Text("Note: Depth is shown better when near objects.");
     ImGui::Separator();
 
     
@@ -1155,13 +1153,10 @@ void Update(App* app)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, app->displaySize.x, app->displaySize.y, 0, GL_RGB, GL_FLOAT, NULL);
 
     glBindTexture(GL_TEXTURE_2D, app->depthAttachmentHandle);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, app->displaySize.x, app->displaySize.y, 0, GL_RGB, GL_FLOAT, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, app->displaySize.x, app->displaySize.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
-
-    glBindRenderbuffer(GL_RENDERBUFFER, app->depthReadHandle);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, app->displaySize.x, app->displaySize.y);
 
 }
 
@@ -1234,7 +1229,7 @@ void Render(App* app)
             {
                 glBindFramebuffer(GL_FRAMEBUFFER, app->framebufferHandle);
 
-                GLenum drawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
+                GLenum drawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
                 glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);
             }
             
