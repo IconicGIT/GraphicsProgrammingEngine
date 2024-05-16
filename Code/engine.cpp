@@ -832,7 +832,7 @@ void Init(App* app)
     app->depthAttachmentHandle;
     glGenTextures(1, &app->depthAttachmentHandle);
     glBindTexture(GL_TEXTURE_2D, app->depthAttachmentHandle);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, app->displaySize.x, app->displaySize.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, app->displaySize.x, app->displaySize.y, 0, GL_RGB, GL_FLOAT, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
@@ -847,7 +847,16 @@ void Init(App* app)
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->positionAttachmentHandle, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, app->colorAttachmentHandle, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, app->normalAttachmentHandle, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, app->depthAttachmentHandle, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, app->depthAttachmentHandle, 0);
+    //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, app->depthAttachmentHandle, 0);
+
+    app->depthReadHandle;
+    glGenRenderbuffers(1, &app->depthReadHandle);
+    glBindRenderbuffer(GL_RENDERBUFFER, app->depthReadHandle);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, app->displaySize.x, app->displaySize.y);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, app->depthReadHandle);
+
+
 
     GLenum framebufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (framebufferStatus != GL_FRAMEBUFFER_COMPLETE)
@@ -869,8 +878,8 @@ void Init(App* app)
     }
 
 
-    ErrorGuardOGL errorFB("Framebuffers", __FILE__, __LINE__);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glEnable(GL_CULL_FACE);
 
 
 
@@ -890,6 +899,18 @@ void Gui(App* app)
         app->rendering_deferred = !app->rendering_deferred;
     }
 
+    if (app->rendering_deferred)
+    {
+        const char* items[] = { "Combined", "Position", "Color", "Normal", "Depth" };
+
+        ImGui::Text("Cuerrent Render Target:");
+        if (ImGui::Combo("##Combo", &app->currentBuffer, items, IM_ARRAYSIZE(items)))
+        {
+
+        }
+        ImGui::Separator();
+    }
+
     if (ImGui::TreeNode("Deferred Textures"))
     {
         if (app->deferredTextures.size() > 0)
@@ -906,6 +927,8 @@ void Gui(App* app)
         ImGui::TreePop();
     }
     ImGui::Separator();
+
+    
 
     ImGui::Text("Loaded Textures");
 
@@ -1117,13 +1140,23 @@ void Update(App* app)
 
 
     //update frameBuffers
+    glBindTexture(GL_TEXTURE_2D, app->positionAttachmentHandle);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, app->displaySize.x, app->displaySize.y, 0, GL_RGB, GL_FLOAT, NULL);
+
     glBindTexture(GL_TEXTURE_2D, app->colorAttachmentHandle);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, app->displaySize.x, app->displaySize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glBindTexture(GL_TEXTURE_2D, app->normalAttachmentHandle);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, app->displaySize.x, app->displaySize.y, 0, GL_RGB, GL_FLOAT, NULL);
 
     glBindTexture(GL_TEXTURE_2D, app->depthAttachmentHandle);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, app->displaySize.x, app->displaySize.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, app->displaySize.x, app->displaySize.y, 0, GL_RGB, GL_FLOAT, NULL);
+
     glBindTexture(GL_TEXTURE_2D, 0);
+
+
+    glBindRenderbuffer(GL_RENDERBUFFER, app->depthReadHandle);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, app->displaySize.x, app->displaySize.y);
 
 }
 
@@ -1196,7 +1229,7 @@ void Render(App* app)
             {
                 glBindFramebuffer(GL_FRAMEBUFFER, app->framebufferHandle);
 
-                GLenum drawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2 };
+                GLenum drawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
                 glDrawBuffers(ARRAY_COUNT(drawBuffers), drawBuffers);
             }
             
@@ -1272,8 +1305,17 @@ void Render(App* app)
 
                     Texture* tex = &app->textures[submeshMaterial.albedoTextureIdx];
 
+                    glUniform1i(glGetUniformLocation(currentProgram.handle, "uTexture"), 0);
                     glActiveTexture(GL_TEXTURE0);
                     glBindTexture(GL_TEXTURE_2D, tex->handle);
+
+                    if (app->rendering_deferred)
+                    {
+                        glUniform1i(glGetUniformLocation(currentProgram.handle, "uDepthTexture"), 1); //set shader texture variable to GL_TEXTURE1
+
+                        glActiveTexture(GL_TEXTURE1);
+                        glBindTexture(GL_TEXTURE_2D, app->depthReadHandle);
+                    }
                     
                    
                     
@@ -1301,26 +1343,26 @@ void Render(App* app)
                 glUseProgram(currentProgram.handle);
 
 
-                //   (...and make its texture sample from unit 0)
-
                 // - bind the texture into unit 0
-                glUniform1i(glGetUniformLocation(app->deferredRenderingProgramIdx, "positionTexture"), 0); //set shader texture variable to GL_TEXTURE0
+                glUniform1i(glGetUniformLocation(app->programs[app->screenRectProgramIdx].handle, "positionTexture"), 0); //set shader texture variable to GL_TEXTURE0
+                glUniform1i(glGetUniformLocation(app->programs[app->screenRectProgramIdx].handle, "colorTexture"), 1); //set shader texture variable to GL_TEXTURE1
+                glUniform1i(glGetUniformLocation(app->programs[app->screenRectProgramIdx].handle, "normalTexture"), 2); //set shader texture variable to GL_TEXTURE2
+                glUniform1i(glGetUniformLocation(app->programs[app->screenRectProgramIdx].handle, "depthTexture"), 3); //set shader texture variable to GL_TEXTURE3
+                glUniform1i(glGetUniformLocation(app->programs[app->screenRectProgramIdx].handle, "currentBuffer"), app->currentBuffer); //current used buffer
+                
+
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, app->positionAttachmentHandle);
 
-                glUniform1i(glGetUniformLocation(app->deferredRenderingProgramIdx, "colorTexture"), 1); //set shader texture variable to GL_TEXTURE1
                 glActiveTexture(GL_TEXTURE1);
                 glBindTexture(GL_TEXTURE_2D, app->colorAttachmentHandle);
 
-                glUniform1i(glGetUniformLocation(app->deferredRenderingProgramIdx, "normalTexture"), 2); //set shader texture variable to GL_TEXTURE2
                 glActiveTexture(GL_TEXTURE2);
                 glBindTexture(GL_TEXTURE_2D, app->normalAttachmentHandle);
 
-                //glActiveTexture(GL_TEXTURE3);
-                //glBindTexture(GL_TEXTURE_2D, app->depthAttachmentHandle);
-                //glUniform1i(glGetUniformLocation(app->deferredRenderingProgramIdx, "depthTexture"), 3); //set shader texture variable to GL_TEXTURE3
+                glActiveTexture(GL_TEXTURE3);
+                glBindTexture(GL_TEXTURE_2D, app->depthAttachmentHandle);
 
-                //glUniform1f(glGetUniformLocation(currentProgram.handle, "a"), abs(sin(angle)));
 
                 // - bind the vao
                 Mesh quadMesh = app->sceneObjects[0].mesh;
@@ -1331,7 +1373,6 @@ void Render(App* app)
                 glDrawElements(GL_TRIANGLES, quadSubMesh.indices.size(), GL_UNSIGNED_INT, (void*)(u64)quadSubMesh.indexOffset);
 
                 glEnable(GL_DEPTH_TEST);
-                glBindTexture(GL_TEXTURE_2D, 0);
 
             }
             

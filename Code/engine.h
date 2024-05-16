@@ -264,9 +264,11 @@ struct App
     GLuint colorAttachmentHandle;
     GLuint normalAttachmentHandle;
     GLuint depthAttachmentHandle;
+    GLuint depthReadHandle;
     GLuint framebufferHandle;
 
     std::vector<DeferredTexture> deferredTextures;
+    int currentBuffer = 0;
 
 
 };
